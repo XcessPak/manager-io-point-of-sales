@@ -1555,6 +1555,44 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   </div>
 </div>
 
+<!-- Quick Add Customer Modal -->
+<div class="modal-overlay" id="add-customer-modal" data-close="closeAddCustomerModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title">➕ Quick Add Customer</span>
+      <button class="modal-close" onclick="closeAddCustomerModal()">×</button>
+    </div>
+    <div class="add-item-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Customer Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="new-cust-name" placeholder="Full name or business name" autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label>Customer Code</label>
+          <input type="text" id="new-cust-code" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Mobile Number</label>
+          <input type="tel" id="new-cust-mobile" placeholder="e.g. 0300 1234567" autocomplete="off" inputmode="tel" />
+          <div id="new-cust-mobile-hint" style="font:500 10px/1.4 'IBM Plex Sans';color:var(--text-mute);margin-top:3px"></div>
+        </div>
+      </div>
+      <div id="new-cust-warning" style="display:none;font:500 11px/1.45 'IBM Plex Sans';color:var(--danger)"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" style="flex:2" id="new-cust-save-select" onclick="submitNewCustomer(true)">Save &amp; Select for Sale</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="submitNewCustomer(false)">Save Only</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeAddCustomerModal()">Cancel</button>
+      </div>
+      <div style="font:500 10px/1.4 'IBM Plex Sans';color:var(--text-mute);margin-top:6px">
+        💡 Type a name in the Customer search that isn't found → pick "Add new customer" and it opens here with the name filled in. Shortcut: F7.
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ══════════════════════════════════════════════════════
    BUILD MARKER — the very first thing this script does.
@@ -2040,6 +2078,7 @@ async function loadAllRecords() {
     state.reference = generateReference();
 
     render();
+    findMobileCustomField(true); // background: enables search by mobile number
 
     if (errors.length) {
       const banner = document.createElement('div');
@@ -5000,6 +5039,185 @@ async function doSubmitNewItem(addToCart) {
 }
 
 /* ══════════════════════════════════════════════════════
+   Quick Add Customer — POST /api4/customer
+   Same idea as Quick Add Item: create the customer in Manager without
+   leaving the POS, add it to the local list, and (optionally) select it
+   for the current sale.
+══════════════════════════════════════════════════════ */
+/* Mobile number → Manager text custom field.
+   Manager customers have no built-in phone field, so the number goes into
+   a text custom field (e.g. "Mobile Number") the user created for
+   Customers. Its key is looked up by name from text-custom-field-batch
+   and written as customFields2.strings[<key>]. If no such field exists,
+   the number is put in the billing address instead so it isn't lost. */
+let _mobileFieldKey;            // undefined = not looked up yet, null = none found
+let _mobileFieldName = '';
+async function findMobileCustomField(force) {
+  if (_mobileFieldKey !== undefined && !force) return _mobileFieldKey;
+  try {
+    const fields = await getBatchEndpoint('/api4/text-custom-field-batch');
+    const nameOf = f => String(f?.item?.name ?? f?.name ?? '').trim();
+    const placeOf = f => JSON.stringify(f?.item?.placement ?? f?.placement ?? f?.item?.placements ?? f?.placements ?? '').toLowerCase();
+    const cands = fields.filter(f => /mobile|phone|cell/i.test(nameOf(f)));
+    const exact = f => /^mobile\s*(number|no\.?)?$/i.test(nameOf(f));
+    const forCust = f => placeOf(f).includes('customer');
+    const best = cands.find(f => exact(f) && forCust(f)) || cands.find(forCust) || cands.find(exact) || cands[0];
+    _mobileFieldKey = best ? best.key : null;
+    _mobileFieldName = best ? nameOf(best) : '';
+    debugLog(best ? 'ok' : 'info', best
+      ? `Mobile custom field: "${_mobileFieldName}" (${best.key})`
+      : `No mobile/phone text custom field found among ${fields.length} text custom fields`);
+  } catch (e) {
+    debugLog('fail', 'Could not read text custom fields: ' + e.message);
+    return null; // not cached, so it is retried next time
+  }
+  return _mobileFieldKey;
+}
+function customerMobile(c) {
+  if (!_mobileFieldKey) return '';
+  const cf = c?.item?.customFields2 || c?.customFields2;
+  return String(cf?.strings?.[_mobileFieldKey] ?? '');
+}
+function digitsOnly(s) { return String(s || '').replace(/\D/g, ''); }
+async function refreshMobileFieldHint() {
+  const hint = document.getElementById('new-cust-mobile-hint');
+  if (!hint) return;
+  hint.style.color = 'var(--text-mute)';
+  hint.textContent = 'Looking for your Mobile Number custom field in Manager…';
+  const key = await findMobileCustomField();
+  if (key) {
+    hint.textContent = `Saved to the Manager custom field "${_mobileFieldName}".`;
+  } else {
+    hint.style.color = 'var(--danger)';
+    hint.textContent = _mobileFieldKey === null
+      ? 'No "Mobile Number" text custom field for Customers found in Manager — the number will be saved in the billing address instead.'
+      : 'Could not reach Manager custom fields — the number will be saved in the billing address instead.';
+  }
+}
+
+function openAddCustomerModal(prefilledName) {
+  document.getElementById('new-cust-name').value = prefilledName || '';
+  document.getElementById('new-cust-code').value = '';
+  document.getElementById('new-cust-mobile').value = '';
+  refreshMobileFieldHint();
+  const w = document.getElementById('new-cust-warning');
+  w.style.display = 'none'; w.innerHTML = '';
+  document.getElementById('add-customer-modal').classList.add('open');
+  setTimeout(() => {
+    const nameEl = document.getElementById('new-cust-name');
+    if (prefilledName) document.getElementById('new-cust-code').focus();
+    else nameEl.focus();
+  }, 100);
+}
+
+function closeAddCustomerModal() {
+  document.getElementById('add-customer-modal').classList.remove('open');
+  setTimeout(() => { const b = document.getElementById('barcode'); if (b) b.focus(); }, 100);
+}
+
+function selectCustomerForSale(key, name, code) {
+  state.selectedCustomer = { key, name, code: code || '' };
+  const search = document.getElementById('cust-search');
+  if (search) search.value = '';
+  renderCustomerField();
+}
+
+async function submitNewCustomer(selectIt, force) {
+  const name = document.getElementById('new-cust-name').value.trim();
+  const code = document.getElementById('new-cust-code').value.trim();
+  const mobile = document.getElementById('new-cust-mobile').value.trim();
+  const warn = document.getElementById('new-cust-warning');
+  if (!name) { toast('Please enter the customer name', 'error'); document.getElementById('new-cust-name').focus(); return; }
+  if (mobile && (digitsOnly(mobile).length < 7 || /[^\d+\s()-]/.test(mobile))) {
+    toast('Please enter a valid mobile number (digits, spaces, +, - only)', 'error');
+    document.getElementById('new-cust-mobile').focus();
+    return;
+  }
+  const mobileKey = mobile ? await findMobileCustomField() : _mobileFieldKey;
+
+  // Avoid accidental duplicates: same code, or same name, already exists.
+  if (!force) {
+    const lc = s => String(s || '').trim().toLowerCase();
+    const md = digitsOnly(mobile);
+    const dup = state.customers.find(c => (code && lc(c.item?.code) === lc(code)) || lc(c.item?.name) === lc(name)
+                                        || (md && digitsOnly(customerMobile(c)) === md));
+    if (dup) {
+      const dn = dup.item?.name || 'Unnamed', dc = dup.item?.code || '';
+      const sameCode = code && lc(dc) === lc(code);
+      const what = sameCode ? 'code' : (md && digitsOnly(customerMobile(dup)) === md ? 'mobile number' : 'name');
+      warn.style.display = '';
+      warn.innerHTML = `⚠ A customer with this ${what} already exists: <strong>${escapeHtml(dn)}${dc ? ' (' + escapeHtml(dc) + ')' : ''}</strong>.
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" id="new-cust-use-existing">Use existing customer</button>
+          ${sameCode ? '' : `<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px" onclick="submitNewCustomer(${selectIt ? 'true' : 'false'}, true)">Create anyway</button>`}
+        </div>`;
+      document.getElementById('new-cust-use-existing').onclick = () => {
+        selectCustomerForSale(dup.key, dn, dc);
+        closeAddCustomerModal();
+        toast(`✓ Customer "${dn}" selected`, 'success');
+      };
+      return;
+    }
+  }
+
+  const btns = document.querySelectorAll('#add-customer-modal .btn');
+  btns.forEach(b => b.disabled = true);
+  try {
+    const value = { name };
+    if (code) value.code = code;
+    if (mobile) {
+      if (mobileKey) value.customFields2 = { strings: { [mobileKey]: mobile } };
+      else value.billingAddress = 'Mobile: ' + mobile;
+    }
+    debugLog('info', 'Creating customer: ' + JSON.stringify(value));
+    const res = await apiCall('POST', '/api4/customer', { value });
+    const key = Array.isArray(res) ? res[0] : res;
+    if (!key || typeof key !== 'string') throw new Error('Manager did not return the new customer key');
+    debugLog('ok', 'Customer created: ' + key);
+    state.customers.push({ key, item: { name, code, ...(value.customFields2 ? { customFields2: value.customFields2 } : {}), ...(value.billingAddress ? { billingAddress: value.billingAddress } : {}) } });
+    toast(`✓ Customer "${name}" created`, 'success');
+    if (mobile && mobileKey) verifyCustomerMobileSaved(key, mobileKey, mobile);
+    if (selectIt) selectCustomerForSale(key, name, code);
+    closeAddCustomerModal();
+  } catch (err) {
+    debugLog('fail', err.message);
+    toast('Could not create customer: ' + err.message, 'error');
+  } finally {
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+// Reads the new customer back from Manager to confirm the mobile number
+// was actually stored in the custom field (Manager can silently ignore
+// fields it doesn't recognise). Runs in the background after saving.
+async function verifyCustomerMobileSaved(key, fieldKey, mobile) {
+  try {
+    const data = await apiCall('GET', '/api4/customer-batch?Keys=' + encodeURIComponent(key));
+    const list = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+    const rec = list.find(x => x.key === key);
+    if (!rec) { debugLog('info', 'Mobile check skipped — new customer not returned by customer-batch'); return; }
+    const saved = customerMobile(rec);
+    if (digitsOnly(saved) === digitsOnly(mobile)) {
+      debugLog('ok', `Mobile number saved on customer (${_mobileFieldName})`);
+    } else {
+      debugLog('fail', 'Mobile not found on saved customer. Returned customFields2: ' + JSON.stringify(rec.item?.customFields2 ?? rec.customFields2 ?? null));
+      toast('Customer saved, but Manager did not store the mobile number. Add it in Manager and tell your developer (see Debug).', 'error');
+    }
+  } catch (e) {
+    debugLog('fail', 'Could not verify mobile number: ' + e.message);
+  }
+}
+
+// Enter in the customer form = Save & Select
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && document.getElementById('add-customer-modal')?.classList.contains('open') &&
+      (e.target.id === 'new-cust-name' || e.target.id === 'new-cust-code' || e.target.id === 'new-cust-mobile')) {
+    e.preventDefault();
+    submitNewCustomer(true);
+  }
+});
+
+/* ══════════════════════════════════════════════════════
    Totals
 ══════════════════════════════════════════════════════ */
 /* ── Discounts ──
@@ -5169,7 +5387,9 @@ function render() {
 
           <div class="form-row">
             <div class="form-field full suggest-wrap">
-              <label>Customer</label>
+              <label style="display:flex;justify-content:space-between;align-items:center">Customer
+                <button type="button" class="debug-toggle" onclick="openAddCustomerModal(document.getElementById('cust-search')?.value || '')" style="font-size:9px;padding:3px 8px" title="Create a new customer in Manager (F7)">+ New Customer</button>
+              </label>
               <input type="text" id="cust-search" placeholder="Type to change customer…" autocomplete="off" />
               <div class="suggest-list" id="cust-suggest"></div>
               <div class="customer-display" id="cust-selected"></div>
@@ -5532,10 +5752,10 @@ function attachCustomerSearch() {
       const c = state.customers[i];
       const name = (c.item?.name || '').toLowerCase();
       const code = (c.item?.code || '').toLowerCase();
-      if (name.includes(q) || code.includes(q)) matches.push(c);
+      const qd = digitsOnly(q);
+      const mob = qd.length >= 3 ? digitsOnly(customerMobile(c)) : '';
+      if (name.includes(q) || code.includes(q) || (mob && mob.includes(qd))) matches.push(c);
     }
-    if (matches.length === 0) { custSuggest.classList.remove('open'); return; }
-
     _custActiveIdx = -1;
     let html = '';
     for (let i = 0; i < matches.length; i++) {
@@ -5545,13 +5765,22 @@ function attachCustomerSearch() {
            data-name="${escapeHtml(c.item?.name || '')}"
            data-code="${escapeHtml(c.item?.code || '')}">
         <div class="name">${escapeHtml(c.item?.name || 'Unnamed')}</div>
-        <div class="code">${escapeHtml(c.item?.code || 'no code')}</div>
+        <div class="code">${escapeHtml(c.item?.code || 'no code')}${customerMobile(c) ? ' · 📱 ' + escapeHtml(customerMobile(c)) : ''}</div>
       </div>`;
     }
+    html += `<div class="suggest-item add-new-cust" data-new="1">
+        <div class="name" style="color:var(--accent)">➕ Add new customer "${escapeHtml(custSearch.value.trim())}"</div>
+        <div class="code">${matches.length ? 'not in the list?' : 'no match found'}</div>
+      </div>`;
     custSuggest.innerHTML = html;
     custSuggest.classList.add('open');
     custSuggest.querySelectorAll('.suggest-item').forEach(el => {
       el.addEventListener('click', () => {
+        if (el.dataset.new) {
+          custSuggest.classList.remove('open');
+          openAddCustomerModal(custSearch.value.trim());
+          return;
+        }
         state.selectedCustomer = { key: el.dataset.key, name: el.dataset.name, code: el.dataset.code };
         custSearch.value = '';
         custSuggest.classList.remove('open');
@@ -5633,6 +5862,11 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'F8') {
     e.preventDefault();
     showReceiptModal();
+  }
+  // F7: New customer
+  if (e.key === 'F7') {
+    e.preventDefault();
+    openAddCustomerModal('');
   }
   // F9: New item
   if (e.key === 'F9') {
