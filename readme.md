@@ -6,6 +6,8 @@
 
 **Current version: v2.5**
 
+> 🍴 This is the **[XcessPak](https://github.com/XcessPak)** fork of the original [POS extension by ksl1816](https://github.com/ksl1816/manager-io-point-of-sales), maintained by Uzair Saeed.
+
 This README is written to match exactly what the current `index.html` does — every API endpoint it calls, every assumption it makes, and every known limitation — so there's a clear, honest record of the extension's behavior before you put it in front of real transactions.
 
 ---
@@ -38,6 +40,7 @@ This README is written to match exactly what the current `index.html` does — e
 - **Setup panel** — configure the default POS/walk-in customer directly from the extension
 - **Built-in User Guide** — a **User Guide** button in the header opens a full how-to reference inside the extension (no internet or separate file needed)
 - **Light / dark theme toggle**
+- **Open in New Tab** — the **↗ Open in New Tab** button runs the POS in its own full browser tab instead of Manager's iframe. Keep the Manager page open in the background: the tab sends its API calls through that page's iframe (Manager still handles login), and shows a *Disconnected* screen if that page is closed. Your browser must allow pop-ups for Manager
 - **Responsive layout** — usable on tablets and narrower screens (POS-friendly breakpoints)
 - **Fully paginated data fetch** — loads all inventory items, non-inventory items, customers, and payment accounts across every API page
 
@@ -47,13 +50,14 @@ This README is written to match exactly what the current `index.html` does — e
 
 ### Option 1 — Install directly from GitHub Pages
 
-1. Enable GitHub Pages on this repo *(Settings → Pages → Deploy from main branch)*
-2. Your extension URL will be:
+1. Copy the extension URL — it is published automatically from the `main` branch by the GitHub Pages workflow in `.github/workflows/static.yml`:
    ```
-   https://ksl1816.github.io/manager-io-point-of-sales/
+   https://xcesspak.github.io/manager-io-point-of-sales/
    ```
-3. In Manager.io go to **Settings → Extensions → Add Custom Extension**
-4. Paste the URL above and save
+2. In Manager.io go to **Settings → Extensions → Add Custom Extension**
+3. Paste the URL above and save
+
+> Using your own copy of this repo? Set **Settings → Pages → Source** to **GitHub Actions**, and your URL will be `https://<your-username>.github.io/manager-io-point-of-sales/`.
 
 ### Option 2 — Download and host yourself
 
@@ -163,8 +167,9 @@ Free to use, modify, and share. Attribution appreciated but not required.
 
 ---
 
-## 👤 Author
+## 👤 Authors
 
-**ksl1816** — [github.com/ksl1816](https://github.com/ksl1816)
+- **Original author:** **ksl1816** — [github.com/ksl1816](https://github.com/ksl1816) ([original repository](https://github.com/ksl1816/manager-io-point-of-sales))
+- **Fork maintainer:** **Uzair Saeed** — [github.com/XcessPak](https://github.com/XcessPak)
 
-Contributions, bug reports, and feature suggestions are welcome — open an issue or pull request.
+Contributions, bug reports, and feature suggestions for this fork are welcome — open a [pull request](https://github.com/XcessPak/manager-io-point-of-sales/pulls).

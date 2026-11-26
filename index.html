@@ -1185,6 +1185,20 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   .pos-grid{height:auto;min-height:calc(100vh - 110px)}
 }
 
+/* ─────────── NEW-TAB (POP-OUT) MODE ─────────── */
+.popout-overlay{
+  position:fixed;inset:0;z-index:10001;display:none;align-items:center;justify-content:center;
+  background:rgba(15,23,42,.92);padding:24px;
+}
+.popout-overlay.show{display:flex}
+.popout-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);
+  padding:28px;max-width:440px;width:100%;box-shadow:var(--shadow-lg);text-align:center;
+}
+.popout-card h2{font-size:18px;font-weight:800;color:var(--text);margin:8px 0}
+.popout-card p{font-size:13px;color:var(--text-mute);line-height:1.5;margin-bottom:18px}
+.popout-card .popout-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
 /* ─────────── STANDALONE INSTALL GUIDE ─────────── */
 .install-overlay{
   position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;
@@ -1280,6 +1294,31 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   </div>
 </div>
 
+<!-- ══ NEW-TAB MODE OVERLAYS ══
+     popoutHostOverlay: shown inside Manager's iframe while the POS runs in its own tab.
+     popoutLostOverlay: shown in the new tab if the Manager page it relies on is closed. ══ -->
+<div class="popout-overlay" id="popoutHostOverlay">
+  <div class="popout-card">
+    <div style="font-size:34px">↗</div>
+    <h2>POS is open in a new tab</h2>
+    <p>Keep this Manager page open in the background — the POS tab talks to Manager through it. Closing or leaving this page disconnects the POS tab.</p>
+    <div class="popout-actions">
+      <button class="btn btn-primary" onclick="focusPosPopout()">Go to POS tab</button>
+      <button class="btn btn-secondary" onclick="closePosPopout()">Close tab &amp; use here</button>
+    </div>
+  </div>
+</div>
+<div class="popout-overlay" id="popoutLostOverlay">
+  <div class="popout-card">
+    <div style="font-size:34px">⚠️</div>
+    <h2>Disconnected from Manager</h2>
+    <p>The Manager page that opened this tab was closed or navigated away, so this tab can no longer read or save data. Open the POS extension in Manager again and click <strong>Open in New Tab</strong>.</p>
+    <div class="popout-actions">
+      <button class="btn btn-secondary" onclick="window.close()">Close this tab</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP HEADER -->
 <header class="app-header">
   <div class="app-brand">
@@ -1334,6 +1373,7 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   <button class="debug-toggle" onclick="toggleAnalysisModal()" title="Sales analysis & top items">📈 Analysis</button>
   <button class="debug-toggle" onclick="toggleReturnsSearchModal()" title="Search any invoice to record a return">↩ Returns</button>
   <button class="debug-toggle" onclick="toggleSetupModal()" title="Default customer & custom fields setup">⚙ Setup</button>
+  <button class="debug-toggle" id="popout-btn" onclick="openPosInNewTab()" title="Open the POS in its own browser tab (keep the Manager page open)">↗ Open in New Tab</button>
   <button class="debug-toggle" onclick="toggleDebug()">Debug</button>
 </div>
 <div class="debug-log" id="debug-log"></div>
@@ -1614,9 +1654,82 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
 debugLog('info', '🔧 POS build v2.5 — if you do not see this exact line first, you are running an old cached file.');
 
 /* ══════════════════════════════════════════════════════
+   NEW-TAB (POP-OUT) MODE
+   Manager only talks to extensions inside its iframe. To run in a
+   separate tab, the iframe opens this same page with window.open and
+   acts as a relay: the tab sends its api-request messages to the
+   iframe (window.opener), the iframe forwards them to Manager
+   (window.parent) and passes Manager's responses back. Manager keeps
+   handling authentication; no token is copied or stored.
+══════════════════════════════════════════════════════ */
+window.__posPopoutHost = true;   // lets a tab opened from here recognise its opener
+const POS_POPOUT = (() => {
+  try {
+    return !!(window.opener && window.opener !== window &&
+              window.opener.location.origin === location.origin &&
+              window.opener.__posPopoutHost);
+  } catch { return false; }        // cross-origin opener → not our iframe
+})();
+if (POS_POPOUT) {
+  window.__posPopoutHost = false;  // a tab never relays for another tab
+  try { if (window.opener.managerAppContext) window.managerAppContext = window.opener.managerAppContext; } catch {}
+  document.title = 'POS Terminal — Manager.io';
+  setInterval(() => {
+    let lost = true;
+    try { lost = !window.opener || window.opener.closed || !window.opener.__posPopoutHost; } catch {}
+    document.getElementById('popoutLostOverlay')?.classList.toggle('show', lost);
+  }, 1500);
+}
+
+let posPopout = null;
+const relayedRequestIds = new Set();
+window.addEventListener('message', (event) => {
+  if (POS_POPOUT || !posPopout) return;
+  const d = event.data;
+  // Tab → iframe → Manager
+  if (event.source === posPopout && event.origin === location.origin &&
+      d && d.type === 'api-request' && d.requestId) {
+    relayedRequestIds.add(d.requestId);
+    window.parent.postMessage(d, '*');
+    return;
+  }
+  // Manager → iframe → tab (only responses to requests we relayed)
+  if (event.source === window.parent && d && d.requestId && relayedRequestIds.has(d.requestId) &&
+      typeof d.type === 'string' && d.type.endsWith('-response')) {
+    relayedRequestIds.delete(d.requestId);
+    if (!posPopout.closed) posPopout.postMessage(d, location.origin);
+  }
+  // Keep the tab's context in sync if Manager re-sends it
+  if (event.source === window.parent && d && d.type === 'manager-context' && !posPopout.closed) {
+    posPopout.postMessage(d, location.origin);
+  }
+});
+
+function openPosInNewTab() {
+  if (posPopout && !posPopout.closed) { posPopout.focus(); return; }
+  posPopout = window.open(location.href, 'manager-pos-terminal');
+  if (!posPopout) {
+    toast('The browser blocked the new tab. Allow pop-ups for Manager and try again.', 'error');
+    return;
+  }
+  document.getElementById('popoutHostOverlay').classList.add('show');
+  const watch = setInterval(() => {
+    if (!posPopout || posPopout.closed) {
+      clearInterval(watch);
+      posPopout = null;
+      relayedRequestIds.clear();
+      document.getElementById('popoutHostOverlay').classList.remove('show');
+    }
+  }, 1000);
+}
+function focusPosPopout() { if (posPopout && !posPopout.closed) posPopout.focus(); }
+function closePosPopout() { if (posPopout && !posPopout.closed) posPopout.close(); }
+
+/* ══════════════════════════════════════════════════════
    Capture managerAppContext from parent
 ══════════════════════════════════════════════════════ */
 window.addEventListener('message', (event) => {
+  if (POS_POPOUT && event.origin !== location.origin) return;
   if (event.data && event.data.type === 'manager-context' && event.data.payload) {
     window.managerAppContext = event.data.payload;
     debugLog('info', '✓ managerAppContext received: ' +
@@ -1640,7 +1753,11 @@ if (window.managerAppContext) setLiveBadge();
    postMessage from a Manager.io parent window.
 ══════════════════════════════════════════════ */
 const isEmbeddedInManager = window.self !== window.top;
-if (!isEmbeddedInManager) {
+if (POS_POPOUT) {
+  const pb = document.getElementById('popout-btn');
+  if (pb) pb.style.display = 'none';
+}
+if (!isEmbeddedInManager && !POS_POPOUT) {
   const installOverlay = document.getElementById('installOverlay');
   const installLinkInput = document.getElementById('installLinkInput');
   const installCopyBtn = document.getElementById('installCopyBtn');
@@ -1676,7 +1793,9 @@ function debugLog(type, msg) {
 }
 
 /* ══════════════════════════════════════════════════════
-   postMessage helper — DO NOT MODIFY
+   postMessage helper
+   In new-tab mode requests go to the opener iframe (which relays
+   them to Manager) instead of window.parent.
 ══════════════════════════════════════════════════════ */
 function postMessageWithResponse(message, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
@@ -1686,6 +1805,7 @@ function postMessageWithResponse(message, timeoutMs = 30000) {
       reject(new Error(`Timeout after ${Math.round(timeoutMs/1000)}s`));
     }, timeoutMs);
     function handler(event) {
+      if (POS_POPOUT && event.origin !== location.origin) return;
       if (event.data?.type?.endsWith('-response') && event.data?.requestId === requestId) {
         clearTimeout(timer);
         window.removeEventListener('message', handler);
@@ -1694,7 +1814,19 @@ function postMessageWithResponse(message, timeoutMs = 30000) {
       }
     }
     window.addEventListener('message', handler);
-    window.parent.postMessage({ ...message, requestId }, '*');
+    if (POS_POPOUT) {
+      let gone = true;
+      try { gone = !window.opener || window.opener.closed; } catch {}
+      if (gone) {
+        clearTimeout(timer);
+        window.removeEventListener('message', handler);
+        reject(new Error('Disconnected from Manager — the Manager page that opened this tab was closed'));
+        return;
+      }
+      window.opener.postMessage({ ...message, requestId }, location.origin);
+    } else {
+      window.parent.postMessage({ ...message, requestId }, '*');
+    }
   });
 }
 
