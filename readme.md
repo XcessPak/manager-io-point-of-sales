@@ -4,7 +4,7 @@
 >
 > The jsPDF library is bundled inline, so PDF generation works fully offline. The only thing loaded from the network is web fonts (Google Fonts), which degrade gracefully to system fonts when offline — so the extension is *nearly* self-contained rather than 100% air-gapped.
 
-**Current version: v2.5**
+**Current version: v3.0** (touchscreen edition) · the previous version is kept at [`/v2.5/`](https://xcesspak.github.io/manager-io-point-of-sales/v2.5/) and tagged `v2.5-backup`
 
 > 🍴 This is the **[XcessPak](https://github.com/XcessPak)** fork of the original [POS extension by ksl1816](https://github.com/ksl1816/manager-io-point-of-sales), maintained by Uzair Saeed.
 
@@ -20,6 +20,11 @@ This README is written to match exactly what the current `index.html` does — e
 - **Quick Add — split-panel layout** — the Current Sale panel is divided into a left Quick Add catalog (tabbed Inventory / Non-Inventory, tap-to-add, full vertical scroll, not capped at a handful of items) and the actual cart on the right, so both get real usable space instead of one squeezing the other
 - **Cart management** — adjust **quantity**, **unit price**, or the **line Total** directly (editing Total works backwards to recalculate Qty from the existing price, rounded to 2 decimal places), remove lines, clear cart
 - **Discounts** — a per-line **Disc** column and a **Bill Discount** field, each with a **%** checkbox — ticked means percent, unticked means amount. The cart and receipts show Subtotal, Item Discounts, Bill Discount and "You Saved". When posted, each discount is built into the line's unit price (the bill discount is spread across lines in proportion to their amounts) and noted in the line description, e.g. *Discount 20.29 (list price 100.00)*, so Manager's invoice total, balances, returns and sales analysis all reflect the price actually charged
+- **Touch Mode (v3.0)** — the **👆 Touch** button switches to a touchscreen layout: larger buttons, tiles, inputs and text, and an **on-screen number pad** for every number field. On by default on touchscreens and remembered per device
+- **Qty − / + buttons** on every cart line
+- **Quick Add filter** — a search box above the Quick Add tiles
+- **Hold / Recall sales** — park the current cart (customer, discounts, walk-in details) and bring it back later; kept in the browser only until completed
+- **Full Screen** button for a dedicated till screen (use *Open in New Tab* first if Manager blocks it)
 - **Customer selection** — search and pick a customer, or fall back to an auto-detected default POS/walk-in customer (code `999` or named "POS")
 - **Quick Add Customer** — a **+ New Customer** button beside the Customer field (shortcut **F7**), and an *Add new customer* option at the bottom of the customer search, open a popup to create a customer in Manager (name required; code and **Mobile Number** optional) and select it for the current sale. The mobile number is saved to a Manager **text custom field for Customers** whose name contains "Mobile" (e.g. *Mobile Number*), found automatically — or to the billing address if no such field exists — and customers can then be searched by mobile number in the POS. It warns about a duplicate name, code or mobile number and offers to use the existing customer instead
 - **Payment method selection** — pulls all Cash & Bank accounts, sorts cash accounts first, and defaults to a cash account

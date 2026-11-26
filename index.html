@@ -597,6 +597,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text}
   transition:all var(--tx-fast);
 }
 .debug-toggle:hover{color:var(--text);border-color:var(--border-strong)}
+.debug-toggle.active-mode{background:var(--accent);border-color:var(--accent-strong);color:#fff}
 
 /* ─────────── DEBUG ─────────── */
 .debug-log{
@@ -1155,6 +1156,100 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   .pos-grid{height:auto;min-height:calc(100vh - 110px)}
 }
 
+/* ─────────── QTY STEPPER (all modes) ─────────── */
+.qty-cell{display:inline-flex;align-items:center;gap:3px}
+.step-btn{
+  width:26px;height:30px;border-radius:6px;border:1px solid var(--border);
+  background:var(--panel-hover);color:var(--text);cursor:pointer;
+  font:700 15px/1 'IBM Plex Sans';display:grid;place-items:center;
+  -webkit-tap-highlight-color:transparent;user-select:none;
+}
+.step-btn:active{background:var(--accent);border-color:var(--accent);color:#fff}
+.quick-filter{
+  width:100%;background:var(--input-bg);border:1px solid var(--input-border);
+  border-radius:var(--radius-sm);padding:7px 10px;color:var(--text);
+  font:500 12px/1.3 'IBM Plex Sans';margin-top:6px;
+}
+.quick-filter:focus{outline:none;border-color:var(--accent)}
+.actions-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.btn-hold{background:rgba(245,158,11,.12);color:#d97706;border:1px solid rgba(245,158,11,.4)}
+.btn-hold:hover:not(:disabled){background:rgba(245,158,11,.2)}
+.held-list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto}
+.held-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg)}
+.held-card .hc-main{flex:1;min-width:0}
+.held-card .hc-title{font:600 13px/1.3 'IBM Plex Sans';color:var(--text)}
+.held-card .hc-sub{font:500 11px/1.4 'IBM Plex Mono',monospace;color:var(--text-mute)}
+.held-card .hc-total{font:700 16px/1 'IBM Plex Sans';color:var(--success);white-space:nowrap}
+
+/* ─────────── ON-SCREEN NUMBER PAD (touch mode) ─────────── */
+.numpad-overlay{position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+.numpad-overlay.open{display:flex}
+.numpad{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow-lg);padding:16px;width:340px;max-width:calc(100vw - 24px)}
+.numpad-label{font:700 11px/1 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.1em;color:var(--text-mute);margin-bottom:8px;display:flex;justify-content:space-between}
+.numpad-display{
+  background:var(--input-bg);border:2px solid var(--accent);border-radius:var(--radius);
+  padding:12px 14px;margin-bottom:12px;text-align:right;min-height:58px;
+  font:700 30px/1.1 'IBM Plex Mono',monospace;color:var(--text);overflow:hidden;white-space:nowrap;
+}
+.numpad-display.fresh{color:var(--text-mute)}
+.numpad-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.numpad-keys button{
+  min-height:62px;border-radius:var(--radius);border:1px solid var(--border);
+  background:var(--bg);color:var(--text);font:700 22px/1 'IBM Plex Sans';cursor:pointer;
+  -webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation;
+}
+.numpad-keys button:active{background:var(--accent-soft);border-color:var(--accent)}
+.numpad-keys .np-fn{font-size:15px;color:var(--text-mute)}
+.numpad-keys .np-ok{background:var(--accent);color:#fff;border-color:var(--accent-strong);grid-row:span 2;font-size:18px}
+.numpad-keys .np-cancel{font-size:14px;color:var(--danger)}
+
+/* ─────────── TOUCH MODE ───────────
+   Switched on with the 👆 Touch button (remembered per device; on by
+   default for touchscreens). Bigger tap targets, bigger text, number pad
+   for numeric fields, no accidental double-tap zoom or text selection. */
+body.touch{touch-action:manipulation}
+body.touch button,body.touch .quick-item,body.touch .suggest-item{user-select:none;-webkit-user-select:none}
+body.touch .debug-toggle,body.touch .icon-btn,body.touch .load-btn{min-height:44px;padding:10px 14px;font-size:11px}
+body.touch .icon-btn{width:44px}
+body.touch .topbar{gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+body.touch .topbar::-webkit-scrollbar{display:none}
+body.touch .topbar > *{flex-shrink:0}
+body.touch .progress-wrap{flex:1 1 40px;min-width:40px}
+body.touch .status-text{max-width:200px}
+body.touch .app-header{padding-top:6px;padding-bottom:6px}
+body.touch .pos-grid{grid-template-columns:minmax(0,1fr) clamp(340px,28vw,420px);height:calc(100vh - 128px)}
+body.touch .cart-split{grid-template-columns:clamp(250px,24vw,400px) minmax(0,1fr)}
+body.touch .cart-table th:first-child,body.touch .cart-table .code-cell{display:none}
+body.touch input[type=number]{-moz-appearance:textfield;appearance:textfield}
+body.touch input[type=number]::-webkit-inner-spin-button,body.touch input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+body.touch .quick-add-grid-v{grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+body.touch .quick-item{padding:14px 8px;min-height:88px;display:flex;flex-direction:column;justify-content:center;border-radius:var(--radius)}
+body.touch .quick-item .qi-name{font-size:13.5px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+body.touch .quick-item .qi-price{font-size:14px;margin-top:6px;font-weight:700}
+body.touch .quick-item .qi-code{font-size:10px;margin-top:3px}
+body.touch .quick-add-tab{min-height:40px;padding:8px 12px;font-size:12px}
+body.touch .quick-filter{min-height:46px;font-size:15px}
+body.touch .barcode-input{min-height:56px;font-size:17px}
+body.touch .cart-table td{padding-top:8px;padding-bottom:8px}
+body.touch .cart-table .name-cell{font-size:14px}
+body.touch .qty-input,body.touch .price-input,body.touch .total-input,body.touch .disc-input{min-height:48px;font-size:16px}
+body.touch .qty-input{width:58px}
+body.touch .step-btn{width:44px;height:48px;font-size:22px;border-radius:8px}
+body.touch .remove-btn{width:48px;height:48px;font-size:22px}
+body.touch .pct-toggle input{width:24px;height:24px}
+body.touch .pct-toggle{font-size:15px}
+body.touch .form-field input,body.touch .form-field select{min-height:48px;font-size:15px}
+body.touch .form-field label{font-size:10.5px}
+body.touch .suggest-item{padding:14px 14px}
+body.touch .suggest-item .name{font-size:15px}
+body.touch .summary-row{font-size:14px;padding:4px 0}
+body.touch .summary-row.grand .v{font-size:34px}
+body.touch .btn{min-height:60px;font-size:13px}
+body.touch #submit-btn{min-height:76px;font-size:18px}
+body.touch .stat .val{font-size:24px}
+body.touch .modal-close{width:44px;height:44px;font-size:22px}
+body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
+
 /* ─────────── NEW-TAB (POP-OUT) MODE ─────────── */
 .popout-overlay{
   position:fixed;inset:0;z-index:10001;display:none;align-items:center;justify-content:center;
@@ -1284,6 +1379,21 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   </div>
 </div>
 
+<!-- ON-SCREEN NUMBER PAD (touch mode) -->
+<div class="numpad-overlay" id="numpad" onclick="if(event.target===this && !numpadTooSoon())closeNumpad()">
+  <div class="numpad" role="dialog" aria-label="Number pad">
+    <div class="numpad-label"><span id="numpad-label">Enter value</span><span id="numpad-hint"></span></div>
+    <div class="numpad-display fresh" id="numpad-display">0</div>
+    <div class="numpad-keys">
+      <button onclick="numpadKey('7')">7</button><button onclick="numpadKey('8')">8</button><button onclick="numpadKey('9')">9</button><button class="np-fn" onclick="numpadKey('back')">⌫</button>
+      <button onclick="numpadKey('4')">4</button><button onclick="numpadKey('5')">5</button><button onclick="numpadKey('6')">6</button><button class="np-fn" onclick="numpadKey('clear')">C</button>
+      <button onclick="numpadKey('1')">1</button><button onclick="numpadKey('2')">2</button><button onclick="numpadKey('3')">3</button><button class="np-ok" onclick="numpadOk()">OK</button>
+      <button onclick="numpadKey('0')">0</button><button onclick="numpadKey('00')">00</button><button id="numpad-dot" onclick="numpadKey('.')">.</button>
+      <button class="np-cancel" style="grid-column:1/-1;min-height:48px" onclick="closeNumpad()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP HEADER -->
 <header class="app-header">
   <div class="app-brand">
@@ -1295,11 +1405,11 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
     </div>
     <div class="app-title">
       <div class="app-name">POS Terminal</div>
-      <div class="app-sub">for Manager.io · v2.5</div>
+      <div class="app-sub">for Manager.io · v3.0</div>
     </div>
   </div>
   <div class="app-badges">
-    <span class="app-badge b-blue">V2.5</span>
+    <span class="app-badge b-blue">V3.0</span>
     <span class="app-badge b-green">
       <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 12a9 9 0 1 1-3.8-7.4"/><polyline points="21 3 21 9 15 9"/>
@@ -1332,6 +1442,8 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   <button class="debug-toggle" onclick="toggleAnalysisModal()" title="Sales analysis & top items">📈 Analysis</button>
   <button class="debug-toggle" onclick="toggleReturnsSearchModal()" title="Search any invoice to record a return">↩ Returns</button>
   <button class="debug-toggle" onclick="toggleSetupModal()" title="Default customer & custom fields setup">⚙ Setup</button>
+  <button class="debug-toggle" id="touch-btn" onclick="toggleTouchMode()" title="Touch Mode: big buttons and an on-screen number pad for touchscreens">👆 Touch</button>
+  <button class="debug-toggle" id="fullscreen-btn" onclick="toggleFullscreen()" title="Full screen">⛶ Full Screen</button>
   <button class="debug-toggle" id="popout-btn" onclick="openPosInNewTab()" title="Open the POS in its own browser tab (keep the Manager page open)">↗ Open in New Tab</button>
   <button class="debug-toggle" onclick="toggleDebug()">Debug</button>
 </div>
@@ -1395,10 +1507,20 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
 <div class="modal-overlay" id="guide-modal" data-close="closeGuideModal">
   <div class="modal-content guide-modal-content">
     <div class="modal-header">
-      <span class="modal-title">❓ POS User Guide <span style="font:600 11px 'IBM Plex Mono',monospace;color:var(--text-mute)">v2.5</span></span>
+      <span class="modal-title">❓ POS User Guide <span style="font:600 11px 'IBM Plex Mono',monospace;color:var(--text-mute)">v3.0</span></span>
       <button class="modal-close" onclick="closeGuideModal()">×</button>
     </div>
     <div class="guide-body">
+
+      <h3>New in v3.0 — touchscreen</h3>
+      <ul>
+        <li><strong>👆 Touch</strong> (top bar) switches Touch Mode on/off: bigger buttons, tiles and text, and an <strong>on-screen number pad</strong> when you tap any number field (Qty, Price, Disc, Total, Bill Discount, tendered amounts, mobile). It is on automatically on touchscreens and remembered per device.</li>
+        <li><strong>− / +</strong> beside each cart quantity. Minus stops at 1; use × to remove the line.</li>
+        <li><strong>🔍 Filter quick items</strong> above the Quick Add tiles narrows them by name or code.</li>
+        <li><strong>⏸ Hold Sale</strong> parks the current cart (customer, discounts and walk-in details) so you can serve the next customer; <strong>▶ Recall</strong> brings it back. Held sales stay in this browser only and are not posted to Manager until completed.</li>
+        <li><strong>⛶ Full Screen</strong> for a dedicated till screen. Inside Manager, full screen may be blocked — use <strong>↗ Open in New Tab</strong> first.</li>
+        <li>Shortcuts: F2 search · F4 complete sale · F7 new customer · F8 print · F9 new item.</li>
+      </ul>
 
       <h3>1. First-time setup</h3>
       <p>Do this once per business, not every session.</p>
@@ -1601,7 +1723,7 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
    is running a cached or outdated copy of this file — hard refresh
    (Ctrl+Shift+R / Cmd+Shift+R) or redeploy, this is not a code bug.
 ══════════════════════════════════════════════════════ */
-debugLog('info', '🔧 POS build v2.5 — if you do not see this exact line first, you are running an old cached file.');
+debugLog('info', '🔧 POS build v3.0 — if you do not see this exact line first, you are running an old cached file.');
 
 /* ══════════════════════════════════════════════════════
    NEW-TAB (POP-OUT) MODE
@@ -5218,6 +5340,253 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ══════════════════════════════════════════════════════
+   TOUCH MODE, NUMBER PAD, FULL SCREEN
+══════════════════════════════════════════════════════ */
+function applyTouchMode(on) {
+  document.body.classList.toggle('touch', !!on);
+  const b = document.getElementById('touch-btn');
+  if (b) { b.classList.toggle('active-mode', !!on); b.textContent = on ? '👆 Touch: On' : '👆 Touch: Off'; }
+}
+function toggleTouchMode() {
+  const on = !document.body.classList.contains('touch');
+  try { localStorage.setItem('pos.touchMode', on ? '1' : '0'); } catch {}
+  applyTouchMode(on);
+  toast(on ? 'Touch Mode on — big buttons and on-screen number pad' : 'Touch Mode off', 'info');
+}
+(function initTouchMode() {
+  let saved = null;
+  try { saved = localStorage.getItem('pos.touchMode'); } catch {}
+  const touchScreen = window.matchMedia && matchMedia('(any-pointer: coarse)').matches;
+  applyTouchMode(saved === null ? touchScreen : saved === '1');
+})();
+
+function toggleFullscreen() {
+  if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+  const req = document.documentElement.requestFullscreen?.();
+  if (!req) { toast('Full screen is not available in this browser.', 'error'); return; }
+  req.catch(() => toast('Full screen is blocked inside Manager. Use ↗ Open in New Tab, then Full Screen.', 'info'));
+}
+document.addEventListener('fullscreenchange', () => {
+  const b = document.getElementById('fullscreen-btn');
+  if (b) b.textContent = document.fullscreenElement ? '⛶ Exit Full Screen' : '⛶ Full Screen';
+});
+
+// Cart quantity − / + buttons. Minus stops at 1 — use × to remove a line.
+function stepCartQty(key, delta) {
+  const line = state.cart.find(l => l.key === key);
+  if (!line) return;
+  const cur = Number(line.qty) || 0;
+  const next = round2(cur + delta);
+  if (delta < 0 && next < 1) return;
+  updateCartQty(key, next);
+}
+
+function filterQuickAdd(value) {
+  state.quickFilter = value;
+  const grid = document.getElementById('quick-add-grid');
+  if (grid) grid.innerHTML = buildQuickAddGridHTML(state.quickAddTab);
+}
+
+/* On-screen number pad: in Touch Mode, tapping any number field (qty,
+   price, discount, total, tendered, mobile…) opens a big keypad instead
+   of the device keyboard. OK writes the value back and fires the field's
+   normal input/change handlers, so every existing calculation still runs. */
+const NUMPAD_SELECTOR = 'input[type=number], input.disc-input, input[type=tel]';
+const _np = { el: null, value: '', fresh: true, openedAt: 0 };
+function numpadLabelFor(el) {
+  if (el.classList.contains('qty-input')) return 'Quantity';
+  if (el.classList.contains('price-input')) return 'Unit Price';
+  if (el.classList.contains('total-input')) return 'Line Total';
+  if (el.classList.contains('disc-input')) return 'Line Discount';
+  const lbl = el.closest('.form-field')?.querySelector('label');
+  const t = (lbl?.childNodes[0]?.textContent || lbl?.textContent || el.placeholder || el.title || '').trim();
+  return t ? t.split('—')[0].trim() : 'Enter value';
+}
+function openNumpad(el) {
+  _np.el = el; _np.value = String(el.value ?? ''); _np.fresh = true; _np.openedAt = performance.now();
+  document.getElementById('numpad-label').textContent = numpadLabelFor(el);
+  const pct = el.classList.contains('disc-input') ? el.parentNode.querySelector('.pct-check')?.checked
+            : el.id === 'bill-discount' ? document.getElementById('bill-discount-pct')?.checked : null;
+  document.getElementById('numpad-hint').textContent = pct === null ? '' : (pct ? 'percent %' : 'amount');
+  document.getElementById('numpad-dot').textContent = el.type === 'tel' ? '+' : '.';
+  renderNumpad();
+  document.getElementById('numpad').classList.add('open');
+}
+function renderNumpad() {
+  const d = document.getElementById('numpad-display');
+  d.textContent = _np.value === '' ? '0' : _np.value;
+  d.classList.toggle('fresh', _np.fresh);
+}
+function closeNumpad() {
+  document.getElementById('numpad').classList.remove('open');
+  _np.el = null;
+}
+// Taps arriving right after the pad opens are the tail of the tap that
+// opened it ("ghost click") — ignore them so they can't type a digit.
+function numpadTooSoon() { return performance.now() - _np.openedAt < 350; }
+function numpadKey(k) {
+  if (!_np.el || numpadTooSoon()) return;
+  const isTel = _np.el.type === 'tel';
+  if (_np.fresh && k !== 'back') _np.value = '';
+  _np.fresh = false;
+  if (k === 'back') _np.value = _np.value.slice(0, -1);
+  else if (k === 'clear') _np.value = '';
+  else if (k === '.') {
+    if (isTel) { if (!_np.value) _np.value = '+'; }
+    else if (!_np.value.includes('.')) _np.value = (_np.value || '0') + '.';
+  } else if (_np.value.length < 18) {
+    _np.value = (_np.value === '0' && !isTel) ? (k === '00' ? '0' : k) : _np.value + k;
+  }
+  renderNumpad();
+}
+function numpadOk() {
+  const el = _np.el;
+  if (!el || numpadTooSoon()) return;
+  let v = _np.value;
+  if (v.endsWith('.')) v = v.slice(0, -1);
+  closeNumpad();
+  el.value = v;
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function numpadTargetFrom(e) {
+  if (!document.body.classList.contains('touch')) return null;
+  const el = e.target?.closest?.(NUMPAD_SELECTOR);
+  return el && !el.disabled && !el.readOnly ? el : null;
+}
+// pointerdown: stop the field taking focus (so no device keyboard);
+// click: open the pad once the tap has finished, so the same tap can't
+// land on a pad key.
+document.addEventListener('pointerdown', (e) => {
+  if (numpadTargetFrom(e)) e.preventDefault();
+}, true);
+document.addEventListener('click', (e) => {
+  const el = numpadTargetFrom(e);
+  if (!el) return;
+  e.preventDefault();
+  openNumpad(el);
+}, true);
+document.addEventListener('focusin', (e) => {   // e.g. reached with Tab or auto-focus
+  const el = numpadTargetFrom(e);
+  if (!el || _np.el === el) return;
+  el.blur();
+  openNumpad(el);
+});
+window.addEventListener('keydown', (e) => {
+  if (!_np.el) return;
+  const k = e.key;
+  if (/^[0-9]$/.test(k)) numpadKey(k);
+  else if (k === '.' || k === ',' || k === '+') numpadKey('.');
+  else if (k === 'Backspace') numpadKey('back');
+  else if (k === 'Delete') numpadKey('clear');
+  else if (k === 'Enter') numpadOk();
+  else if (k === 'Escape') closeNumpad();
+  else return;
+  e.preventDefault(); e.stopImmediatePropagation();
+}, true);
+
+/* ══════════════════════════════════════════════════════
+   HOLD / RECALL SALES
+   Park the current cart (customer, discounts, walk-in details) so the
+   next customer can be served, then bring it back later. Held sales are
+   kept in this browser (localStorage) — nothing is posted to Manager
+   until the sale is completed.
+══════════════════════════════════════════════════════ */
+const HELD_KEY = 'pos.heldSales';
+function loadHeldSales() { try { return JSON.parse(localStorage.getItem(HELD_KEY) || '[]'); } catch { return []; } }
+function saveHeldSales(list) { try { localStorage.setItem(HELD_KEY, JSON.stringify(list)); } catch {} updateHeldCount(); }
+function updateHeldCount() {
+  const n = loadHeldSales().length;
+  const el = document.getElementById('held-count');
+  if (el) el.textContent = n ? '(' + n + ')' : '';
+  const b = document.getElementById('recall-btn');
+  if (b) b.classList.toggle('btn-hold', n > 0);
+}
+function snapshotCurrentSale() {
+  return {
+    id: Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+    heldAt: new Date().toISOString(),
+    cart: JSON.parse(JSON.stringify(state.cart)),
+    billDisc: state.billDisc || null,
+    billDiscPct: !!state.billDiscPct,
+    customer: state.selectedCustomer || null,
+    custName: document.getElementById('cust-name-free')?.value.trim() || '',
+    custPhone: document.getElementById('cust-phone')?.value.trim() || '',
+    total: cartTotal(),
+  };
+}
+function clearSaleScreen() {
+  state.cart = [];
+  resetBillDiscount();
+  renderEmptyCart();
+  renderSummary();
+  const n = document.getElementById('cust-name-free'); if (n) n.value = '';
+  const ph = document.getElementById('cust-phone'); if (ph) ph.value = '';
+  resetToDefaultCustomer();
+}
+function holdCurrentSale() {
+  if (!state.cart.length) { toast('Cart is empty — nothing to hold', 'error'); return; }
+  const list = loadHeldSales();
+  list.push(snapshotCurrentSale());
+  saveHeldSales(list);
+  clearSaleScreen();
+  toast('⏸ Sale held — tap Recall to bring it back', 'success');
+  document.getElementById('barcode')?.focus();
+}
+function heldSaleLabel(h) {
+  return h.custName || h.customer?.name || 'Walk-in';
+}
+function openHeldSalesModal() {
+  const list = loadHeldSales();
+  const body = !list.length
+    ? '<div style="padding:24px;text-align:center;color:var(--text-mute)">No held sales.</div>'
+    : `<div class="held-list">${list.slice().reverse().map(h => {
+        const items = h.cart.length, qty = h.cart.reduce((s, l) => s + (Number(l.qty) || 0), 0);
+        const t = new Date(h.heldAt);
+        return `<div class="held-card">
+          <div class="hc-main">
+            <div class="hc-title">${escapeHtml(heldSaleLabel(h))}</div>
+            <div class="hc-sub">${t.toLocaleDateString()} ${t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${items} line${items === 1 ? '' : 's'} · qty ${fmtQty(qty)}</div>
+            <div class="hc-sub" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(h.cart.map(l => l.itemName).join(', '))}</div>
+          </div>
+          <div class="hc-total">${fmt(h.total)}</div>
+          <button class="btn btn-primary" style="min-height:48px;padding:10px 16px" onclick="recallHeldSale('${h.id}')">Recall</button>
+          <button class="btn btn-secondary" style="min-height:48px;padding:10px 12px" onclick="deleteHeldSale('${h.id}')" title="Delete this held sale">🗑</button>
+        </div>`;
+      }).join('')}</div>`;
+  openGenericModal('▶ Held Sales', body, '<button class="btn btn-secondary" onclick="closeGenericModal()">Close</button>');
+}
+function recallHeldSale(id) {
+  const list = loadHeldSales();
+  const h = list.find(x => x.id === id);
+  if (!h) { toast('That held sale is gone', 'error'); openHeldSalesModal(); return; }
+  const rest = list.filter(x => x.id !== id);
+  if (state.cart.length) {
+    if (!confirm('The current cart is not empty. Hold it and recall the selected sale?')) return;
+    rest.push(snapshotCurrentSale());
+  }
+  saveHeldSales(rest);
+  clearSaleScreen();
+  state.cart = h.cart.map(l => ({ ...l, qtyOwned: (state.qtyOwned && l.key in state.qtyOwned) ? state.qtyOwned[l.key] : l.qtyOwned ?? null }));
+  if (state.cart.length) state.cart.forEach(appendCartRow);
+  state.billDisc = h.billDisc || null;
+  state.billDiscPct = !!h.billDiscPct;
+  const bd = document.getElementById('bill-discount'); if (bd) bd.value = discInputValue(state.billDisc);
+  const bp = document.getElementById('bill-discount-pct'); if (bp) bp.checked = state.billDiscPct;
+  if (h.customer) { state.selectedCustomer = h.customer; renderCustomerField(); }
+  const n = document.getElementById('cust-name-free'); if (n) n.value = h.custName || '';
+  const ph = document.getElementById('cust-phone'); if (ph) ph.value = h.custPhone || '';
+  renderSummary();
+  closeGenericModal();
+  toast(`▶ Recalled sale for ${heldSaleLabel(h)}`, 'success');
+}
+function deleteHeldSale(id) {
+  if (!confirm('Delete this held sale? It cannot be recovered.')) return;
+  saveHeldSales(loadHeldSales().filter(x => x.id !== id));
+  openHeldSalesModal();
+}
+
+/* ══════════════════════════════════════════════════════
    Totals
 ══════════════════════════════════════════════════════ */
 /* ── Discounts ──
@@ -5286,10 +5655,14 @@ function buildQuickAddGridHTML(tab) {
   const items = state.items
     .filter(r => r.item?.hasDefaultSalesUnitPrice && Number(r.item.defaultSalesUnitPrice) > 0)
     .filter(r => tab === 'non-inventory' ? r.posType === 'non-inventory' : (r.posType || 'inventory') !== 'non-inventory')
+    .filter(r => {
+      const f = (state.quickFilter || '').trim().toLowerCase();
+      return !f || (r.item.itemName || '').toLowerCase().includes(f) || (r.item.itemCode || '').toLowerCase().includes(f);
+    })
     .sort((a, b) => (b.item.defaultSalesUnitPrice || 0) - (a.item.defaultSalesUnitPrice || 0))
     .slice(0, 500); // safety cap only — this is now a full scrollable catalog panel, not a thin strip
   if (!items.length) {
-    return `<div style="padding:14px;text-align:center;color:var(--text-mute);font-size:11px;grid-column:1/-1">No ${tab === 'non-inventory' ? 'non-inventory' : 'inventory'} items with a default sale price yet.</div>`;
+    return `<div style="padding:14px;text-align:center;color:var(--text-mute);font-size:11px;grid-column:1/-1">${(state.quickFilter || '').trim() ? 'No quick items match “' + escapeHtml(state.quickFilter.trim()) + '”.' : `No ${tab === 'non-inventory' ? 'non-inventory' : 'inventory'} items with a default sale price yet.`}</div>`;
   }
   return items.map(r => `
     <div class="quick-item" onclick="addItemToCartByRecord(state.items.find(i=>i.key==='${r.key}'))" title="${escapeHtml(r.item.itemName)}">
@@ -5357,6 +5730,8 @@ function render() {
         <div class="cart-split">
           ${quickItemsAll.length > 0 ? `
           <div class="quick-add-pane">
+            <input type="search" class="quick-filter" id="quick-filter" placeholder="🔍 Filter quick items…" autocomplete="off"
+                   value="${escapeHtml(state.quickFilter || '')}" oninput="filterQuickAdd(this.value)" />
             <div class="quick-add-grid-v" id="quick-add-grid">${buildQuickAddGridHTML(state.quickAddTab)}</div>
           </div>` : ''}
           <div class="cart-pane">
@@ -5431,6 +5806,10 @@ function render() {
             <div class="summary-row grand"><span class="l">Total</span><span class="v" id="sum-total">0.00</span></div>
           </div>
 
+          <div class="actions-2">
+            <button class="btn btn-hold" onclick="holdCurrentSale()" title="Park this sale and start a new one">⏸ Hold Sale</button>
+            <button class="btn btn-secondary" id="recall-btn" onclick="openHeldSalesModal()" title="Bring back a held sale">▶ Recall <span id="held-count"></span></button>
+          </div>
           <div class="actions">
             <button class="btn btn-secondary" onclick="clearCart()">Clear</button>
             <button class="btn btn-print" onclick="showReceiptModal()" title="Print last receipt">🖨 Print</button>
@@ -5448,6 +5827,7 @@ function render() {
   renderEmptyCart();
   renderSummary();
   renderPaymentMethodOptions();
+  updateHeldCount();
 
   setTimeout(() => document.getElementById('barcode').focus(), 80);
 }
@@ -5484,7 +5864,7 @@ function ensureCartTable() {
             <th style="width:70px">Code</th>
             <th>Item</th>
             <th style="width:60px;text-align:right">Stock</th>
-            <th style="width:72px;text-align:right">Qty</th>
+            <th style="width:120px;text-align:right">Qty</th>
             <th style="width:90px;text-align:right">Price ✎</th>
             <th style="width:112px;text-align:right" title="Tick % for percent, untick for amount">Disc ✎</th>
             <th style="width:90px;text-align:right">Total</th>
@@ -5519,9 +5899,13 @@ function rowHTML(line) {
       <td class="name-cell">${escapeHtml(line.itemName)}</td>
       <td style="text-align:right"><span class="qty-owned ${ownedCls}">${ownedLbl}</span></td>
       <td style="text-align:right">
-        <input type="number" class="qty-input" value="${line.qty}" min="0" step="any"
-               onchange="updateCartQty('${k}', this.value)"
-               inputmode="decimal" />
+        <div class="qty-cell">
+          <button type="button" class="step-btn" onclick="stepCartQty('${k}', -1)" title="One less">−</button>
+          <input type="number" class="qty-input" value="${line.qty}" min="0" step="any"
+                 onchange="updateCartQty('${k}', this.value)"
+                 inputmode="decimal" />
+          <button type="button" class="step-btn" onclick="stepCartQty('${k}', 1)" title="One more">+</button>
+        </div>
       </td>
       <td style="text-align:right">
         <input type="number" class="price-input editable" value="${line.unitPrice}" min="0" step="any"
