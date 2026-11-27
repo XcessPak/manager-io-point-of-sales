@@ -26,6 +26,7 @@ This README is written to match exactly what the current `index.html` does — e
 - **Hold / Recall sales** — park the current cart (customer, discounts, walk-in details) and bring it back later; kept in the browser only until completed
 - **Quick Pay** — after Complete Sale, the Sale Complete window opens with the payment method preselected and Amount Tendered pre-filled with the amount due, so an exact payment is one tap on **✓ Pay & Print** (or Enter). Quick-cash buttons (Exact and the next round amounts, e.g. 500 / 1,000) and the number pad handle larger notes, with the change shown in large digits; less than due posts a part payment; card/bank methods never give change. **Split / Advanced** keeps the multi-line payment form
 - **Receipt printing without pop-ups** — receipts print through a hidden frame (never blocked) with extra paper feed at the end so the printer's auto-cutter cuts below the text. Whether the printer cuts is set in its Windows driver (see *Known Limitations*)
+- **Receive Stock** — the **📦 Receive Stock** button records stock received from a supplier: choose or quick-create the supplier, scan/search items (or create new ones), enter quantity and unit cost (pre-filled from each item's last purchase price), and choose **On Credit** (owed to the supplier) or **Paid Now** (cash/bank). It posts a Manager **Purchase Invoice**, which adds the quantity to stock, and for Paid Now also a **Payment** to the supplier against that invoice. Stock levels update on screen immediately, and the invoice is read back to confirm Manager kept the unit costs
 - **Full Screen** button for a dedicated till screen (use *Open in New Tab* first if Manager blocks it)
 - **Customer selection** — search and pick a customer, or fall back to an auto-detected default POS/walk-in customer (code `999` or named "POS")
 - **Quick Add Customer** — a **+ New Customer** button beside the Customer field (shortcut **F7**), and an *Add new customer* option at the bottom of the customer search, open a popup to create a customer in Manager (name required; code and **Mobile Number** optional) and select it for the current sale. The mobile number is saved to a Manager **text custom field for Customers** whose name contains "Mobile" (e.g. *Mobile Number*), found automatically — or to the billing address if no such field exists — and customers can then be searched by mobile number in the POS. It warns about a duplicate name, code or mobile number and offers to use the existing customer instead
@@ -127,6 +128,9 @@ Once installed inside Manager.io:
 | `POST /api4/journal-entry` | Moving a credit balance from one invoice to another (Adjust / Apply Credit) |
 | `POST /api4/inventory-item` | Quick-creating a new inventory item |
 | `POST /api4/non-inventory-item-batch` | Quick-creating a new non-inventory item |
+| `POST /api4/purchase-invoice` | Receive Stock (stock received from a supplier) |
+| `POST /api4/payment` (supplier) | Receive Stock paid now — pays the purchase invoice from a cash/bank account |
+| `POST /api4/supplier` | Quick-creating a supplier in Receive Stock |
 | `POST /api4/customer` | Creating the default "POS" walk-in customer from Setup |
 
 ---

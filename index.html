@@ -1117,6 +1117,12 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   padding:12px;margin-bottom:14px;overflow:auto;
   max-height:50vh;
 }
+.rs-modal{max-width:1180px;width:calc(100vw - 32px)}
+.rs-grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.rs-grid{grid-template-columns:1fr}}
+.rs-pay-toggle{display:flex;gap:6px}
+.rs-pay-toggle .qp-method small{font-weight:500;font-size:10px;color:var(--text-mute)}
+.rs-selected{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font:600 12px 'IBM Plex Sans'}
 .receipt-modal-content{max-width:520px}
 .receipt-modal-content.with-pay{max-width:940px;width:calc(100vw - 32px)}
 .receipt-layout.with-pay{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
@@ -1470,6 +1476,7 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
   <button class="debug-toggle" onclick="toggleHistoryModal()" title="Browse previous sales invoices">🕘 History</button>
   <button class="debug-toggle" onclick="toggleAnalysisModal()" title="Sales analysis & top items">📈 Analysis</button>
   <button class="debug-toggle" onclick="toggleReturnsSearchModal()" title="Search any invoice to record a return">↩ Returns</button>
+  <button class="debug-toggle" onclick="openReceiveStockModal()" title="Record stock received from a supplier (Purchase Invoice)">📦 Receive Stock</button>
   <button class="debug-toggle" onclick="toggleSetupModal()" title="Default customer & custom fields setup">⚙ Setup</button>
   <button class="debug-toggle" id="touch-btn" onclick="toggleTouchMode()" title="Touch Mode: big buttons and an on-screen number pad for touchscreens">👆 Touch</button>
   <button class="debug-toggle" id="fullscreen-btn" onclick="toggleFullscreen()" title="Full screen">⛶ Full Screen</button>
@@ -1554,6 +1561,7 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
         <li><strong>⏸ Hold Sale</strong> parks the current cart (customer, discounts and walk-in details) so you can serve the next customer; <strong>▶ Recall</strong> brings it back. Held sales stay in this browser only and are not posted to Manager until completed.</li>
         <li><strong>⛶ Full Screen</strong> for a dedicated till screen. Inside Manager, full screen may be blocked — use <strong>↗ Open in New Tab</strong> first.</li>
         <li><strong>Quick Pay:</strong> after <strong>Complete Sale</strong> the Sale Complete window shows the amount due with the checkout payment method selected and <strong>Amount Tendered already filled in</strong>. Exact payment = one tap on <strong>✓ Pay &amp; Print</strong> (or press Enter). If the customer hands over more, tap a quick-cash button (e.g. 500 / 1,000) or the Tendered box and the change is shown in large digits. Less than due posts a part payment. Card/bank methods have no change. <strong>💰 Split / Advanced</strong> still splits a payment across accounts or changes the receipt date.</li>
+        <li><strong>📦 Receive Stock</strong> (top bar): pick the supplier (or <strong>+ New Supplier</strong>), scan or search items, enter quantity received and unit cost (pre-filled from the last purchase price), choose <strong>On Credit</strong> or <strong>Paid Now</strong> from a cash/bank account, then <strong>Save Stock Received</strong>. This posts a <strong>Purchase Invoice</strong> in Manager (which adds the stock), plus a <strong>Payment</strong> to the supplier when paid now. Unknown barcodes can be created on the spot.</li>
         <li>Shortcuts: F2 search · F4 complete sale · Enter pay &amp; print · F7 new customer · F8 print · F9 new item.</li>
       </ul>
 
@@ -1707,6 +1715,80 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
       </div>
       <div style="font:500 10px/1.4 'IBM Plex Sans';color:var(--text-mute);margin-top:6px">
         💡 Scan an unknown barcode in the main scanner → it will auto-open this form with the code pre-filled.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Receive Stock Modal -->
+<div class="modal-overlay" id="receive-stock-modal" data-close="closeReceiveStockModal">
+  <div class="modal-content register-modal-content rs-modal">
+    <div class="modal-header">
+      <span class="modal-title">📦 Receive Stock</span>
+      <button class="modal-close" onclick="closeReceiveStockModal()">×</button>
+    </div>
+    <div class="rs-grid">
+      <div class="rs-left">
+        <div class="form-field suggest-wrap" style="margin-bottom:8px">
+          <label style="display:flex;justify-content:space-between;align-items:center">Supplier <span style="color:var(--danger)">*</span>
+            <button type="button" class="debug-toggle" style="font-size:9px;padding:3px 8px" onclick="rsQuickAddSupplier()">+ New Supplier</button>
+          </label>
+          <input type="text" id="rs-supplier-search" placeholder="Type supplier name or code…" autocomplete="off" />
+          <div class="suggest-list" id="rs-supplier-suggest"></div>
+          <div id="rs-supplier-selected" style="margin-top:5px"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-field"><label>Date Received</label><input type="date" id="rs-date" /></div>
+          <div class="form-field"><label>Supplier Bill No.</label><input type="text" id="rs-reference" placeholder="Optional" autocomplete="off" /></div>
+        </div>
+        <div class="form-field" style="margin-bottom:8px">
+          <label>Payment</label>
+          <div class="rs-pay-toggle">
+            <button type="button" id="rs-pay-credit" class="qp-method active" onclick="rsSetPaid(false)">On Credit<br><small>pay supplier later</small></button>
+            <button type="button" id="rs-pay-paid" class="qp-method" onclick="rsSetPaid(true)">Paid Now<br><small>cash / bank</small></button>
+          </div>
+        </div>
+        <div class="form-field" id="rs-paid-from-wrap" style="display:none;margin-bottom:8px">
+          <label>Paid From</label>
+          <select id="rs-paid-from"></select>
+        </div>
+        <div class="form-field" style="margin-bottom:8px">
+          <label>Notes</label>
+          <input type="text" id="rs-notes" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+      <div class="rs-right">
+        <div class="form-field suggest-wrap" style="margin-bottom:8px">
+          <label style="display:flex;justify-content:space-between;align-items:center">Add Item — scan barcode or search
+            <button type="button" class="debug-toggle" style="font-size:9px;padding:3px 8px" onclick="rsNewItem()">+ New Item</button>
+          </label>
+          <input type="text" id="rs-item-search" placeholder="Scan / type code or name, Enter to add" autocomplete="off" />
+          <div class="suggest-list" id="rs-item-suggest"></div>
+        </div>
+        <div class="cart-wrap" style="min-height:200px;max-height:42vh">
+          <table class="cart-table">
+            <thead><tr>
+              <th>Item</th>
+              <th style="text-align:right">In Stock</th>
+              <th style="text-align:right;width:150px">Qty Received</th>
+              <th style="text-align:right;width:100px">Unit Cost</th>
+              <th style="text-align:right;width:100px">Total</th>
+              <th style="width:48px"></th>
+            </tr></thead>
+            <tbody id="rs-lines"></tbody>
+          </table>
+          <div id="rs-empty" class="empty-cart" style="padding:24px">Scan or search items to add them.</div>
+        </div>
+        <div class="summary" style="margin-top:8px">
+          <div class="summary-row"><span>Items</span><span class="v" id="rs-count">0</span></div>
+          <div class="summary-row"><span>Total Quantity</span><span class="v" id="rs-qty">0</span></div>
+          <div class="summary-row grand"><span class="l">Total Cost</span><span class="v" id="rs-total">0.00</span></div>
+        </div>
+        <div id="rs-result" style="font:500 11px 'IBM Plex Sans';color:var(--text-mute);min-height:16px;margin-bottom:6px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="flex:1" onclick="rsClear()">Clear</button>
+          <button class="btn btn-primary" style="flex:2" id="rs-save-btn" onclick="submitReceiveStock()">✓ Save Stock Received</button>
+        </div>
       </div>
     </div>
   </div>
@@ -2110,6 +2192,7 @@ async function computeQtyOwned(onProgress) {
     else addMicro(itemKey, d.qtyOwned ?? 0);
   });
   await chunkProcess(purchaseInvoices, rec => { const lines = rec.item?.lines; if (!lines) return; for (let i = 0; i < lines.length; i++) { const ln = lines[i]; if (ln.item) addMicro(ln.item, ln.qty); } });
+  learnFromPurchaseInvoices(purchaseInvoices);
   await chunkProcess(debitNotes, rec => { const lines = rec.item?.lines; if (!lines) return; for (let i = 0; i < lines.length; i++) { const ln = lines[i]; if (ln.item) subMicro(ln.item, ln.qty); } });
   await chunkProcess(salesInvoices, rec => { const lines = rec.item?.lines; if (!lines) return; for (let i = 0; i < lines.length; i++) { const ln = lines[i]; if (ln.item) subMicro(ln.item, ln.qty); } });
   await chunkProcess(creditNotes, rec => { const lines = rec.item?.lines; if (!lines) return; for (let i = 0; i < lines.length; i++) { const ln = lines[i]; if (ln.item) addMicro(ln.item, ln.qty); } });
@@ -5290,6 +5373,7 @@ function openAddItemModal(prefilledCode) {
 
 function closeAddItemModal() {
   document.getElementById('add-item-modal').classList.remove('open');
+  if (rs.awaitingNewItem) { rs.awaitingNewItem = false; setTimeout(() => document.getElementById('rs-item-search')?.focus(), 100); return; }
   setTimeout(() => { const b = document.getElementById('barcode'); if (b) b.focus(); }, 100);
 }
 
@@ -5369,9 +5453,12 @@ async function doSubmitNewItem(addToCart) {
     const countEl = document.querySelector('.indexed-count');
     if (countEl) countEl.textContent = state.items.length.toLocaleString();
 
+    const forReceiveStock = rs.awaitingNewItem && document.getElementById('receive-stock-modal')?.classList.contains('open');
     closeAddItemModal();
 
-    if (addToCart) {
+    if (forReceiveStock) {
+      if (newRec.posType !== 'non-inventory') rsAddItem(newRec);
+    } else if (addToCart) {
       addItemToCartByRecord(newRec);
     }
 
@@ -5569,6 +5656,304 @@ document.addEventListener('keydown', (e) => {
     submitNewCustomer(true);
   }
 });
+
+/* ══════════════════════════════════════════════════════
+   RECEIVE STOCK — Manager Purchase Invoice (+ Payment when paid now)
+   Stock received from a supplier is posted as a Purchase Invoice, which
+   is what adds the quantity to inventory in Manager. "On Credit" leaves
+   it owed to the supplier (Accounts Payable); "Paid Now" also posts a
+   Payment from the chosen cash/bank account against that invoice, the
+   mirror of how a sale's Receipt is posted against its Sales Invoice.
+   Unit cost is pre-filled from the item's last purchase price.
+══════════════════════════════════════════════════════ */
+state.lastCost = Object.create(null);      // itemKey -> { price, date }
+state.purchasePriceField = 'purchaseUnitPrice';
+function learnFromPurchaseInvoices(list) {
+  let sawField = null;
+  const best = Object.create(null);
+  for (const rec of list || []) {
+    const d = rec.item || rec;
+    const date = String(d.issueDate || '').slice(0, 10);
+    for (const ln of d.lines || []) {
+      if (!ln.item) continue;
+      const field = ['purchaseUnitPrice', 'unitPrice'].find(f => ln[f] != null);
+      if (!field) continue;
+      sawField = sawField || field;
+      const price = Number(ln[field]) || 0;
+      if (price > 0 && (!best[ln.item] || date >= best[ln.item].date)) best[ln.item] = { price, date };
+    }
+  }
+  state.lastCost = best;
+  if (sawField) state.purchasePriceField = sawField;
+  debugLog('info', `Purchase prices: ${Object.keys(best).length} items have a last cost (line field "${state.purchasePriceField}")`);
+}
+
+const rs = { supplier: null, lines: [], paid: false };
+async function loadSuppliers(force) {
+  if (state.suppliers && !force) return state.suppliers;
+  try { state.suppliers = await getBatchEndpoint('/api4/supplier-batch'); }
+  catch (e) { debugLog('fail', 'Could not load suppliers: ' + e.message); state.suppliers = state.suppliers || []; }
+  return state.suppliers;
+}
+function openReceiveStockModal() {
+  if (!state.items.length) { toast('Press Load Items & Customers first', 'error'); return; }
+  const dt = document.getElementById('rs-date'); if (!dt.value) dt.value = todayISO();
+  const sel = document.getElementById('rs-paid-from');
+  sel.innerHTML = (state.paymentAccounts || []).map(a => `<option value="${a.key}">${escapeHtml(a.item?.name || 'Account')}</option>`).join('');
+  if (state.selectedPaymentAccount?.key) sel.value = state.selectedPaymentAccount.key;
+  document.getElementById('receive-stock-modal').classList.add('open');
+  loadSuppliers();
+  rsRender();
+  setTimeout(() => document.getElementById(rs.supplier ? 'rs-item-search' : 'rs-supplier-search')?.focus(), 120);
+}
+function closeReceiveStockModal() {
+  document.getElementById('receive-stock-modal').classList.remove('open');
+  setTimeout(() => document.getElementById('barcode')?.focus(), 100);
+}
+function rsSetPaid(paid) {
+  rs.paid = !!paid;
+  document.getElementById('rs-pay-credit').classList.toggle('active', !rs.paid);
+  document.getElementById('rs-pay-paid').classList.toggle('active', rs.paid);
+  document.getElementById('rs-paid-from-wrap').style.display = rs.paid ? '' : 'none';
+}
+function rsSelectSupplier(key, name, code) {
+  rs.supplier = key ? { key, name, code: code || '' } : null;
+  const box = document.getElementById('rs-supplier-selected');
+  box.innerHTML = rs.supplier
+    ? `<span class="rs-selected">🏭 ${escapeHtml(rs.supplier.name)}${rs.supplier.code ? ' · ' + escapeHtml(rs.supplier.code) : ''}</span>
+       <a class="clear-link" href="#" onclick="event.preventDefault();rsSelectSupplier(null)">change</a>` : '';
+  const inp = document.getElementById('rs-supplier-search');
+  inp.value = ''; inp.style.display = rs.supplier ? 'none' : '';
+  document.getElementById('rs-supplier-suggest').classList.remove('open');
+  if (rs.supplier) document.getElementById('rs-item-search')?.focus(); else inp.focus();
+}
+async function rsQuickAddSupplier() {
+  const typed = document.getElementById('rs-supplier-search').value.trim();
+  const name = (prompt('New supplier name:', typed) || '').trim();
+  if (!name) return;
+  const lc = name.toLowerCase();
+  const dup = (state.suppliers || []).find(x => String(x.item?.name || '').trim().toLowerCase() === lc);
+  if (dup && !confirm(`A supplier named "${dup.item?.name}" already exists. Create another one anyway?`)) { rsSelectSupplier(dup.key, dup.item?.name, dup.item?.code); return; }
+  try {
+    const res = await apiCall('POST', '/api4/supplier', { value: { name } });
+    const key = Array.isArray(res) ? res[0] : res;
+    if (!key || typeof key !== 'string') throw new Error('Manager did not return the new supplier key');
+    (state.suppliers = state.suppliers || []).push({ key, item: { name } });
+    toast(`✓ Supplier "${name}" created`, 'success');
+    rsSelectSupplier(key, name, '');
+  } catch (e) { toast('Could not create supplier: ' + e.message, 'error'); }
+}
+function rsInventoryItems() { return state.items.filter(r => (r.posType || 'inventory') !== 'non-inventory'); }
+function rsAddItem(rec) {
+  if (!rec) return;
+  if (rec.posType === 'non-inventory') { toast('Non-inventory items have no stock to receive', 'error'); return; }
+  const ex = rs.lines.find(l => l.key === rec.key);
+  if (ex) ex.qty = round2(ex.qty + 1);
+  else rs.lines.push({ key: rec.key, name: rec.item?.itemName || 'Item', code: rec.item?.itemCode || '', qty: 1,
+                       cost: state.lastCost[rec.key]?.price || 0 });
+  rsRender();
+  const s = document.getElementById('rs-item-search'); s.value = ''; document.getElementById('rs-item-suggest').classList.remove('open');
+}
+function rsSetLine(key, field, value) {
+  const l = rs.lines.find(x => x.key === key); if (!l) return;
+  const n = Number(value);
+  if (field === 'qty') l.qty = isFinite(n) && n > 0 ? n : l.qty;
+  else if (field === 'cost') l.cost = isFinite(n) && n >= 0 ? n : l.cost;
+  else if (field === 'total') { if (isFinite(n) && n >= 0 && l.qty > 0) l.cost = Math.round((n / l.qty) * 1e6) / 1e6; }
+  rsRender();
+}
+function rsStep(key, d) {
+  const l = rs.lines.find(x => x.key === key); if (!l) return;
+  const next = round2(l.qty + d); if (next < 1) return; l.qty = next; rsRender();
+}
+function rsRemove(key) { rs.lines = rs.lines.filter(l => l.key !== key); rsRender(); }
+function rsClear() {
+  if (rs.lines.length && !confirm('Clear all items from this stock receipt?')) return;
+  rs.lines = []; document.getElementById('rs-reference').value = ''; document.getElementById('rs-notes').value = '';
+  document.getElementById('rs-result').textContent = '';
+  rsRender();
+}
+function rsTotal() { return round2(rs.lines.reduce((s, l) => s + l.qty * l.cost, 0)); }
+function rsRender() {
+  const tb = document.getElementById('rs-lines'); if (!tb) return;
+  tb.innerHTML = rs.lines.map(l => {
+    const k = escapeHtml(l.key);
+    const owned = state.qtyOwned && l.key in state.qtyOwned ? fmtQty(state.qtyOwned[l.key]) : '—';
+    const last = state.lastCost[l.key];
+    return `<tr>
+      <td class="name-cell">${escapeHtml(l.name)}<div style="font:500 10px 'IBM Plex Mono';color:var(--text-mute)">${escapeHtml(l.code)}${last ? ' · last cost ' + fmt(last.price) : ' · no previous cost'}</div></td>
+      <td style="text-align:right"><span class="qty-owned na">${owned}</span></td>
+      <td style="text-align:right"><div class="qty-cell">
+        <button type="button" class="step-btn" onclick="rsStep('${k}',-1)">−</button>
+        <input type="number" class="qty-input" min="0" step="any" value="${l.qty}" onchange="rsSetLine('${k}','qty',this.value)">
+        <button type="button" class="step-btn" onclick="rsStep('${k}',1)">+</button></div></td>
+      <td style="text-align:right"><input type="number" class="price-input editable" min="0" step="any" value="${l.cost}" onchange="rsSetLine('${k}','cost',this.value)" title="Purchase price per unit"></td>
+      <td style="text-align:right"><input type="number" class="total-input editable" min="0" step="any" value="${(l.qty * l.cost).toFixed(2)}" onchange="rsSetLine('${k}','total',this.value)" title="Line total — editing it works out the unit cost"></td>
+      <td><button class="remove-btn" onclick="rsRemove('${k}')">×</button></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rs-empty').style.display = rs.lines.length ? 'none' : '';
+  document.getElementById('rs-count').textContent = rs.lines.length;
+  document.getElementById('rs-qty').textContent = fmtQty(rs.lines.reduce((s, l) => s + l.qty, 0));
+  document.getElementById('rs-total').textContent = fmt(rsTotal());
+}
+function rsNewItem() {
+  rs.awaitingNewItem = true;
+  openAddItemModal(document.getElementById('rs-item-search').value.trim());
+}
+// Search boxes inside the Receive Stock window (attached once).
+(function attachReceiveStockSearch() {
+  const wire = () => {
+    const ss = document.getElementById('rs-supplier-search'), sg = document.getElementById('rs-supplier-suggest');
+    const is = document.getElementById('rs-item-search'), ig = document.getElementById('rs-item-suggest');
+    if (!ss || !is) return;
+    ss.addEventListener('input', () => {
+      const q = ss.value.trim().toLowerCase();
+      if (!q) { sg.classList.remove('open'); return; }
+      const m = (state.suppliers || []).filter(x => String(x.item?.name || '').toLowerCase().includes(q) || String(x.item?.code || '').toLowerCase().includes(q)).slice(0, 8);
+      sg.innerHTML = m.map(x => `<div class="suggest-item" data-key="${escapeHtml(x.key)}"><div class="name">${escapeHtml(x.item?.name || 'Unnamed')}</div><div class="code">${escapeHtml(x.item?.code || '')}</div></div>`).join('')
+        + `<div class="suggest-item" data-new="1"><div class="name" style="color:var(--accent)">➕ New supplier "${escapeHtml(ss.value.trim())}"</div><div class="code">${state.suppliers ? (m.length ? 'not in the list?' : 'no match found') : 'loading suppliers…'}</div></div>`;
+      sg.classList.add('open');
+      sg.querySelectorAll('.suggest-item').forEach(el => el.addEventListener('click', () => {
+        if (el.dataset.new) { sg.classList.remove('open'); rsQuickAddSupplier(); return; }
+        const x = state.suppliers.find(y => y.key === el.dataset.key);
+        rsSelectSupplier(x.key, x.item?.name || 'Unnamed', x.item?.code || '');
+      }));
+    });
+    is.addEventListener('input', () => {
+      const q = is.value.trim();
+      if (!q) { ig.classList.remove('open'); return; }
+      const m = searchItems(q, 10).filter(r => r.posType !== 'non-inventory');
+      ig.innerHTML = m.length ? m.map(r => `<div class="suggest-item" data-key="${escapeHtml(r.key)}"><div class="name">${escapeHtml(r.item?.itemName || '')}</div><div class="code">${escapeHtml(r.item?.itemCode || '')}${state.lastCost[r.key] ? ' · last cost ' + fmt(state.lastCost[r.key].price) : ''}</div></div>`).join('')
+        : `<div class="suggest-item" data-new="1"><div class="name" style="color:var(--accent)">➕ Create new item "${escapeHtml(q)}"</div><div class="code">no inventory item found</div></div>`;
+      ig.classList.add('open');
+      ig.querySelectorAll('.suggest-item').forEach(el => el.addEventListener('click', () => {
+        if (el.dataset.new) { ig.classList.remove('open'); rsNewItem(); return; }
+        rsAddItem(state.items.find(y => y.key === el.dataset.key));
+      }));
+    });
+    is.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const q = is.value.trim(); if (!q) return;
+      const exact = findItemByBarcode(q) || searchItems(q, 1).filter(r => r.posType !== 'non-inventory')[0];
+      if (exact) rsAddItem(exact); else rsNewItem();
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+
+let cachedAPAccount;
+async function resolveAPAccountForSupplier(supplierKey) {
+  const sup = (state.suppliers || []).find(x => x.key === supplierKey);
+  if (sup?.item?.controlAccount) return sup.item.controlAccount;
+  if (cachedAPAccount !== undefined) return cachedAPAccount;
+  try {
+    const [bs, ca] = await Promise.all([
+      apiCall('GET', '/api4/balance-sheet-account-batch?PageSize=500'),
+      apiCall('GET', '/api4/control-account-batch?PageSize=500'),
+    ]);
+    const items = d => Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
+    const ap = [...items(bs), ...items(ca)].find(a => a.item?.isAccountsPayable === true);
+    cachedAPAccount = ap ? ap.key : null;
+  } catch (e) { debugLog('fail', 'AP account lookup failed: ' + e.message); return null; }
+  return cachedAPAccount;
+}
+
+async function submitReceiveStock() {
+  const out = document.getElementById('rs-result');
+  const btn = document.getElementById('rs-save-btn');
+  if (!rs.supplier) { out.textContent = 'Choose the supplier first.'; return; }
+  const lines = rs.lines.filter(l => l.qty > 0);
+  if (!lines.length) { out.textContent = 'Add at least one item.'; return; }
+  if (lines.some(l => !(l.cost > 0)) && !confirm('Some items have a unit cost of 0. Save anyway?')) return;
+  const date = document.getElementById('rs-date').value || todayISO();
+  const billNo = document.getElementById('rs-reference').value.trim();
+  const notes = document.getElementById('rs-notes').value.trim();
+  const reference = billNo || ('GRN-' + generateReference().replace(/^POS-/, ''));
+  const total = rsTotal();
+  const paidFrom = rs.paid ? document.getElementById('rs-paid-from').value : null;
+  if (rs.paid && !paidFrom) { out.textContent = 'Choose the account it was paid from.'; return; }
+
+  let apAccount = null;
+  if (rs.paid) {
+    apAccount = await resolveAPAccountForSupplier(rs.supplier.key);
+    if (!apAccount) { out.textContent = 'Could not find the Accounts Payable account in Manager — nothing was posted. Save it "On Credit" and record the payment in Manager.'; return; }
+  }
+  btn.disabled = true; out.textContent = 'Saving purchase invoice…';
+  const pf = state.purchasePriceField || 'purchaseUnitPrice';
+  try {
+    const payload = { value: {
+      issueDate: date + 'T00:00:00',
+      reference,
+      supplier: rs.supplier.key,
+      description: ['POS stock received', notes].filter(Boolean).join(' — '),
+      lines: lines.map((l, i) => ({ lineNumber: i + 1, item: l.key, qty: l.qty, [pf]: l.cost })),
+      hasLineNumber: false, hasLineDescription: false, discount: false, amountsIncludeTax: false,
+    }};
+    debugLog('info', 'Posting purchase invoice: ' + JSON.stringify(payload));
+    const res = await apiCall('POST', '/api4/purchase-invoice', payload);
+    const piKey = Array.isArray(res) ? res[0] : res;
+    if (!piKey || typeof piKey !== 'string') throw new Error('Manager did not return the purchase invoice key');
+
+    // Stock is in — update quantities and last costs on screen straight away.
+    for (const l of lines) {
+      state.qtyOwned[l.key] = (Number(state.qtyOwned[l.key]) || 0) + l.qty;
+      if (l.cost > 0) state.lastCost[l.key] = { price: l.cost, date };
+      state.cart.filter(c => c.key === l.key).forEach(c => { c.qtyOwned = state.qtyOwned[l.key]; updateCartRowDOM(c, false); });
+    }
+    verifyPurchaseInvoice(piKey, lines, pf);
+
+    let msg = `✓ Stock received: ${reference} · ${fmt(total)} owed to ${rs.supplier.name}`;
+    if (rs.paid) {
+      out.textContent = 'Recording payment…';
+      try {
+        const pay = { value: {
+          date: date + 'T00:00:00', reference: reference + '-PAY',
+          description: 'POS payment for stock received ' + reference,
+          payee: 2, supplier: rs.supplier.key, paidFrom,
+          lines: [{ account: apAccount, accountsPayableSupplier: rs.supplier.key, accountsPayablePurchaseInvoice: piKey, amount: total }],
+        }};
+        debugLog('info', 'Posting supplier payment: ' + JSON.stringify(pay));
+        await apiCall('POST', '/api4/payment', pay);
+        state.allPayments = null;
+        const accName = (state.paymentAccounts || []).find(a => a.key === paidFrom)?.item?.name || 'account';
+        msg = `✓ Stock received and paid: ${reference} · ${fmt(total)} from ${accName}`;
+      } catch (e) {
+        debugLog('fail', 'Supplier payment failed: ' + e.message);
+        out.textContent = `Stock was saved (${reference}), but the payment could not be recorded: ${e.message}. Record the payment to ${rs.supplier.name} in Manager.`;
+        toast('Stock saved — payment NOT recorded', 'error');
+        rs.lines = []; rsRender(); btn.disabled = false;
+        return;
+      }
+    }
+    toast(msg, 'success');
+    rs.lines = []; document.getElementById('rs-reference').value = ''; document.getElementById('rs-notes').value = '';
+    rsRender();
+    out.textContent = msg;
+  } catch (e) {
+    debugLog('fail', 'Purchase invoice failed: ' + e.message);
+    out.textContent = 'Could not save: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+// Reads the purchase invoice back to confirm Manager kept the unit costs
+// (if the price field name were wrong, Manager would save 0 costs).
+async function verifyPurchaseInvoice(key, lines, pf) {
+  try {
+    const data = await apiCall('GET', '/api4/purchase-invoice-batch?Keys=' + encodeURIComponent(key));
+    const list = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
+    const rec = list.find(x => x.key === key); if (!rec) return;
+    const saved = (rec.item?.lines || []);
+    const costOk = lines.every(l => l.cost <= 0 || saved.some(s => s.item === l.key && Math.abs((Number(s[pf] ?? s.purchaseUnitPrice ?? s.unitPrice) || 0) - l.cost) < 0.0001));
+    if (costOk) debugLog('ok', 'Purchase invoice verified: costs saved');
+    else {
+      debugLog('fail', 'Purchase invoice saved WITHOUT the unit costs. Saved lines: ' + JSON.stringify(saved));
+      toast('Stock saved but Manager did not keep the purchase prices — check the invoice in Manager (see Debug).', 'error');
+    }
+  } catch (e) { debugLog('fail', 'Could not verify purchase invoice: ' + e.message); }
+}
 
 /* ══════════════════════════════════════════════════════
    TOUCH MODE, NUMBER PAD, FULL SCREEN
