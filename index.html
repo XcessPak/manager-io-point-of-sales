@@ -901,6 +901,7 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
 .btn-primary:hover:not(:disabled){background:var(--accent-strong)}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed}
 .btn-secondary{background:transparent;color:var(--text-mute);border:1px solid var(--border)}
+.btn-danger-solid{background:var(--danger);color:#fff}
 .btn-secondary:hover{background:var(--panel-hover);color:var(--text);border-color:var(--border-strong)}
 .btn-xs{padding:6px 10px;min-height:auto;font-size:10px;flex:none!important;min-width:0!important;border-radius:6px}
 
@@ -1790,6 +1791,48 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
           <button class="btn btn-primary" style="flex:2" id="rs-save-btn" onclick="submitReceiveStock()">✓ Save Stock Received</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Add Supplier Modal -->
+<div class="modal-overlay" id="add-supplier-modal" data-close="closeAddSupplierModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <span class="modal-title">➕ New Supplier</span>
+      <button class="modal-close" onclick="closeAddSupplierModal()">×</button>
+    </div>
+    <div class="add-item-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Supplier Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="new-sup-name" placeholder="Company or person name" autocomplete="off" />
+        </div>
+        <div class="form-field">
+          <label>Supplier Code</label>
+          <input type="text" id="new-sup-code" placeholder="Optional" autocomplete="off" />
+        </div>
+      </div>
+      <div id="new-sup-warning" style="display:none;font:500 11px/1.45 'IBM Plex Sans';color:var(--danger)"></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" style="flex:2" id="new-sup-save" onclick="submitNewSupplier()">Save &amp; Select</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeAddSupplierModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- In-app confirmation (browser confirm()/prompt() are blocked inside Manager's frame) -->
+<div class="modal-overlay" id="pos-confirm-modal" data-close="posConfirmCancel">
+  <div class="modal-content" style="max-width:420px">
+    <div class="modal-header">
+      <span class="modal-title" id="pos-confirm-title">Please confirm</span>
+      <button class="modal-close" onclick="posConfirmCancel()">×</button>
+    </div>
+    <div id="pos-confirm-msg" style="font:500 14px/1.5 'IBM Plex Sans';color:var(--text);margin:4px 0 16px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" style="flex:1" id="pos-confirm-no" onclick="posConfirmCancel()">Cancel</button>
+      <button class="btn btn-primary" style="flex:1" id="pos-confirm-yes" onclick="posConfirmOk()">OK</button>
     </div>
   </div>
 </div>
@@ -4152,9 +4195,9 @@ function removeFromCart(key) {
   renderSummary();
 }
 
-function clearCart() {
+async function clearCart() {
   if (state.cart.length === 0) return;
-  if (!confirm('Clear all items from the current sale?')) return;
+  if (!(await posConfirm('Clear all items from the current sale?', { ok: 'Clear', danger: true }))) return;
   state.cart = [];
   resetBillDiscount();
   renderEmptyCart();
@@ -5727,21 +5770,8 @@ function rsSelectSupplier(key, name, code) {
   document.getElementById('rs-supplier-suggest').classList.remove('open');
   if (rs.supplier) document.getElementById('rs-item-search')?.focus(); else inp.focus();
 }
-async function rsQuickAddSupplier() {
-  const typed = document.getElementById('rs-supplier-search').value.trim();
-  const name = (prompt('New supplier name:', typed) || '').trim();
-  if (!name) return;
-  const lc = name.toLowerCase();
-  const dup = (state.suppliers || []).find(x => String(x.item?.name || '').trim().toLowerCase() === lc);
-  if (dup && !confirm(`A supplier named "${dup.item?.name}" already exists. Create another one anyway?`)) { rsSelectSupplier(dup.key, dup.item?.name, dup.item?.code); return; }
-  try {
-    const res = await apiCall('POST', '/api4/supplier', { value: { name } });
-    const key = Array.isArray(res) ? res[0] : res;
-    if (!key || typeof key !== 'string') throw new Error('Manager did not return the new supplier key');
-    (state.suppliers = state.suppliers || []).push({ key, item: { name } });
-    toast(`✓ Supplier "${name}" created`, 'success');
-    rsSelectSupplier(key, name, '');
-  } catch (e) { toast('Could not create supplier: ' + e.message, 'error'); }
+function rsQuickAddSupplier() {
+  openAddSupplierModal(document.getElementById('rs-supplier-search').value.trim());
 }
 function rsInventoryItems() { return state.items.filter(r => (r.posType || 'inventory') !== 'non-inventory'); }
 function rsAddItem(rec) {
@@ -5767,8 +5797,8 @@ function rsStep(key, d) {
   const next = round2(l.qty + d); if (next < 1) return; l.qty = next; rsRender();
 }
 function rsRemove(key) { rs.lines = rs.lines.filter(l => l.key !== key); rsRender(); }
-function rsClear() {
-  if (rs.lines.length && !confirm('Clear all items from this stock receipt?')) return;
+async function rsClear() {
+  if (rs.lines.length && !(await posConfirm('Clear all items from this stock receipt?', { ok: 'Clear', danger: true }))) return;
   rs.lines = []; document.getElementById('rs-reference').value = ''; document.getElementById('rs-notes').value = '';
   document.getElementById('rs-result').textContent = '';
   rsRender();
@@ -5866,7 +5896,7 @@ async function submitReceiveStock() {
   if (!rs.supplier) { out.textContent = 'Choose the supplier first.'; return; }
   const lines = rs.lines.filter(l => l.qty > 0);
   if (!lines.length) { out.textContent = 'Add at least one item.'; return; }
-  if (lines.some(l => !(l.cost > 0)) && !confirm('Some items have a unit cost of 0. Save anyway?')) return;
+  if (lines.some(l => !(l.cost > 0)) && !(await posConfirm('Some items have a unit cost of 0. Save anyway?', { ok: 'Save anyway' }))) return;
   const date = document.getElementById('rs-date').value || todayISO();
   const billNo = document.getElementById('rs-reference').value.trim();
   const notes = document.getElementById('rs-notes').value.trim();
@@ -5954,6 +5984,99 @@ async function verifyPurchaseInvoice(key, lines, pf) {
     }
   } catch (e) { debugLog('fail', 'Could not verify purchase invoice: ' + e.message); }
 }
+
+/* ══════════════════════════════════════════════════════
+   POP-UP STACKING + IN-APP CONFIRM
+   Each pop-up that opens is placed above the ones already open (so e.g.
+   Quick Add Item opened from Receive Stock is on top, not hidden behind
+   it), and Escape closes the top-most one. posConfirm() replaces the
+   browser's confirm(), which Manager's extension frame blocks.
+══════════════════════════════════════════════════════ */
+let _modalZ = 1000;
+new MutationObserver(muts => {
+  for (const m of muts) {
+    const el = m.target;
+    if (!el.classList || !el.classList.contains('modal-overlay')) continue;
+    const isOpen = el.classList.contains('open');
+    if (isOpen && !el._posOpen) el.style.zIndex = String(++_modalZ);
+    el._posOpen = isOpen;
+  }
+}).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+function topOpenModal() {
+  let top = null, z = -1;
+  document.querySelectorAll('.modal-overlay.open').forEach(el => { const v = Number(el.style.zIndex) || 1000; if (v >= z) { z = v; top = el; } });
+  return top;
+}
+let _posConfirmResolve = null;
+function posConfirm(message, opts = {}) {
+  document.getElementById('pos-confirm-title').textContent = opts.title || 'Please confirm';
+  document.getElementById('pos-confirm-msg').textContent = message;
+  const yes = document.getElementById('pos-confirm-yes');
+  yes.textContent = opts.ok || 'OK';
+  yes.className = 'btn ' + (opts.danger ? 'btn-danger-solid' : 'btn-primary');
+  document.getElementById('pos-confirm-no').textContent = opts.cancel || 'Cancel';
+  if (_posConfirmResolve) _posConfirmResolve(false);
+  document.getElementById('pos-confirm-modal').classList.add('open');
+  setTimeout(() => yes.focus(), 50);
+  return new Promise(res => { _posConfirmResolve = res; });
+}
+function posConfirmDone(v) {
+  document.getElementById('pos-confirm-modal').classList.remove('open');
+  const r = _posConfirmResolve; _posConfirmResolve = null; if (r) r(v);
+}
+function posConfirmOk() { posConfirmDone(true); }
+function posConfirmCancel() { posConfirmDone(false); }
+
+/* Quick Add Supplier (from Receive Stock) — POST /api4/supplier */
+function openAddSupplierModal(prefilledName) {
+  document.getElementById('new-sup-name').value = prefilledName || '';
+  document.getElementById('new-sup-code').value = '';
+  const w = document.getElementById('new-sup-warning'); w.style.display = 'none'; w.innerHTML = '';
+  document.getElementById('add-supplier-modal').classList.add('open');
+  setTimeout(() => document.getElementById(prefilledName ? 'new-sup-code' : 'new-sup-name').focus(), 100);
+}
+function closeAddSupplierModal() {
+  document.getElementById('add-supplier-modal').classList.remove('open');
+}
+async function submitNewSupplier(force) {
+  const name = document.getElementById('new-sup-name').value.trim();
+  const code = document.getElementById('new-sup-code').value.trim();
+  const warn = document.getElementById('new-sup-warning');
+  if (!name) { toast('Please enter the supplier name', 'error'); document.getElementById('new-sup-name').focus(); return; }
+  if (!force) {
+    const lc = x => String(x || '').trim().toLowerCase();
+    const dup = (state.suppliers || []).find(x => lc(x.item?.name) === lc(name) || (code && lc(x.item?.code) === lc(code)));
+    if (dup) {
+      const sameCode = code && lc(dup.item?.code) === lc(code);
+      warn.style.display = '';
+      warn.innerHTML = `⚠ A supplier with this ${sameCode ? 'code' : 'name'} already exists: <strong>${escapeHtml(dup.item?.name || '')}</strong>.
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;min-height:36px" id="new-sup-use-existing">Use existing supplier</button>
+          ${sameCode ? '' : `<button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;min-height:36px" onclick="submitNewSupplier(true)">Create anyway</button>`}
+        </div>`;
+      document.getElementById('new-sup-use-existing').onclick = () => { rsSelectSupplier(dup.key, dup.item?.name || '', dup.item?.code || ''); closeAddSupplierModal(); };
+      return;
+    }
+  }
+  const btns = document.querySelectorAll('#add-supplier-modal .btn'); btns.forEach(b => b.disabled = true);
+  try {
+    const value = { name }; if (code) value.code = code;
+    const res = await apiCall('POST', '/api4/supplier', { value });
+    const key = Array.isArray(res) ? res[0] : res;
+    if (!key || typeof key !== 'string') throw new Error('Manager did not return the new supplier key');
+    (state.suppliers = state.suppliers || []).push({ key, item: { name, code } });
+    toast(`✓ Supplier "${name}" created`, 'success');
+    closeAddSupplierModal();
+    rsSelectSupplier(key, name, code);
+  } catch (e) { toast('Could not create supplier: ' + e.message, 'error'); }
+  finally { btns.forEach(b => b.disabled = false); }
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('add-supplier-modal')?.classList.contains('open') && (e.target.id === 'new-sup-name' || e.target.id === 'new-sup-code')) {
+    e.preventDefault(); submitNewSupplier();
+  }
+});
 
 /* ══════════════════════════════════════════════════════
    TOUCH MODE, NUMBER PAD, FULL SCREEN
@@ -6172,13 +6295,13 @@ function openHeldSalesModal() {
       }).join('')}</div>`;
   openGenericModal('▶ Held Sales', body, '<button class="btn btn-secondary" onclick="closeGenericModal()">Close</button>');
 }
-function recallHeldSale(id) {
+async function recallHeldSale(id) {
   const list = loadHeldSales();
   const h = list.find(x => x.id === id);
   if (!h) { toast('That held sale is gone', 'error'); openHeldSalesModal(); return; }
   const rest = list.filter(x => x.id !== id);
   if (state.cart.length) {
-    if (!confirm('The current cart is not empty. Hold it and recall the selected sale?')) return;
+    if (!(await posConfirm('The current cart is not empty. Hold it and recall the selected sale?', { ok: 'Hold & Recall' }))) return;
     rest.push(snapshotCurrentSale());
   }
   saveHeldSales(rest);
@@ -6196,8 +6319,8 @@ function recallHeldSale(id) {
   closeGenericModal();
   toast(`▶ Recalled sale for ${heldSaleLabel(h)}`, 'success');
 }
-function deleteHeldSale(id) {
-  if (!confirm('Delete this held sale? It cannot be recovered.')) return;
+async function deleteHeldSale(id) {
+  if (!(await posConfirm('Delete this held sale? It cannot be recovered.', { ok: 'Delete', danger: true }))) return;
   saveHeldSales(loadHeldSales().filter(x => x.id !== id));
   openHeldSalesModal();
 }
@@ -6877,7 +7000,7 @@ document.addEventListener('keydown', (e) => {
   // closeGenericModal/closeReturnsSearchModal etc. are all reachable via
   // data-close, so this doesn't need updating every time a modal is added).
   if (e.key === 'Escape') {
-    const openModal = document.querySelector('.modal-overlay.open');
+    const openModal = topOpenModal();
     if (openModal) {
       const fn = openModal.dataset.close;
       if (fn && typeof window[fn] === 'function') window[fn]();
