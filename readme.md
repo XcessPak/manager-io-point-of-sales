@@ -4,7 +4,7 @@
 >
 > The jsPDF library is bundled inline, so PDF generation works fully offline. The only thing loaded from the network is web fonts (Google Fonts), which degrade gracefully to system fonts when offline — so the extension is *nearly* self-contained rather than 100% air-gapped.
 
-**Current version: v3.0** (touchscreen edition) · the previous version is kept at [`/v2.5/`](https://xcesspak.github.io/manager-io-point-of-sales/v2.5/) and tagged `v2.5-backup`
+**Current version: v3.3** (tap the version badge or **🆕 What's New** in the app for the full version history) · the previous version is kept at [`/v2.5/`](https://xcesspak.github.io/manager-io-point-of-sales/v2.5/) and tagged `v2.5-backup`
 
 > 🍴 This is the **[XcessPak](https://github.com/XcessPak)** fork of the original [POS extension by ksl1816](https://github.com/ksl1816/manager-io-point-of-sales), maintained by Uzair Saeed.
 

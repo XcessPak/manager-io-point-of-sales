@@ -1170,6 +1170,17 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
 .guide-body .guide-note{background:var(--accent-soft);border:1px solid var(--accent-glow);border-radius:var(--radius-sm);padding:8px 12px;margin:0 0 10px}
 .guide-body .guide-note p{margin:0;color:var(--text)}
 .guide-body hr{border:0;border-top:1px solid var(--border);margin:16px 0}
+.app-ver-badge{cursor:pointer;font:inherit;position:relative}
+.app-ver-badge:hover{filter:brightness(1.15)}
+.ver-new-dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--bg)}
+.ver-entry{border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin:0 0 10px}
+.ver-entry.current{border-color:var(--accent-glow);background:var(--accent-soft)}
+.ver-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.ver-num{font:700 14px/1.3 'IBM Plex Mono',monospace;color:var(--text)}
+.ver-title{font:600 12.5px/1.3 'IBM Plex Sans';color:var(--text)}
+.ver-date{font:500 11px/1.3 'IBM Plex Mono',monospace;color:var(--text-mute);margin-left:auto}
+.ver-tag{font:700 10px/1 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.04em;color:var(--accent);border:1px solid var(--accent-glow);border-radius:999px;padding:3px 7px}
+.guide-body .ver-entry ul{margin-bottom:0}
 
 /* ─────────── QUICK ADD INVENTORY MODAL ─────────── */
 .add-item-form{display:flex;flex-direction:column;gap:10px}
@@ -1441,11 +1452,11 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
     </div>
     <div class="app-title">
       <div class="app-name">POS Terminal</div>
-      <div class="app-sub">for Manager.io · v3.0</div>
+      <div class="app-sub">for Manager.io · <span class="app-ver-label">v3.3</span></div>
     </div>
   </div>
   <div class="app-badges">
-    <span class="app-badge b-blue">V3.0</span>
+    <button type="button" class="app-badge b-blue app-ver-badge" onclick="openVersionModal()" title="Version history — see what changed in each update"><span class="app-ver-label">v3.3</span><span class="ver-new-dot" id="ver-new-dot" hidden></span></button>
     <span class="app-badge b-green">
       <svg class="b-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 12a9 9 0 1 1-3.8-7.4"/><polyline points="21 3 21 9 15 9"/>
@@ -1464,6 +1475,9 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
     </svg>
     User Guide
+  </button>
+  <button class="app-cta" id="whats-new-btn" style="background:var(--accent-soft);color:var(--accent);border-color:rgba(79,140,255,.35)" onclick="openVersionModal()" title="Version history">
+    🆕 What's New
   </button>
 </header>
 
@@ -1549,7 +1563,7 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
 <div class="modal-overlay" id="guide-modal" data-close="closeGuideModal">
   <div class="modal-content guide-modal-content">
     <div class="modal-header">
-      <span class="modal-title">❓ POS User Guide <span style="font:600 11px 'IBM Plex Mono',monospace;color:var(--text-mute)">v3.0</span></span>
+      <span class="modal-title">❓ POS User Guide <span class="app-ver-label" style="font:600 11px 'IBM Plex Mono',monospace;color:var(--text-mute)">v3.3</span></span>
       <button class="modal-close" onclick="closeGuideModal()">×</button>
     </div>
     <div class="guide-body">
@@ -1624,6 +1638,20 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
     </div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="btn btn-secondary" style="flex:1" onclick="closeGuideModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Version History Modal: every release, newest first (filled from VERSION_HISTORY) -->
+<div class="modal-overlay" id="version-modal" data-close="closeVersionModal">
+  <div class="modal-content guide-modal-content">
+    <div class="modal-header">
+      <span class="modal-title">🆕 Version History <span class="app-ver-label" style="font:600 11px 'IBM Plex Mono',monospace;color:var(--text-mute)">v3.3</span></span>
+      <button class="modal-close" onclick="closeVersionModal()">×</button>
+    </div>
+    <div class="guide-body" id="version-body"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-secondary" style="flex:1" onclick="closeVersionModal()">Close</button>
     </div>
   </div>
 </div>
@@ -1877,13 +1905,104 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
 
 <script>
 /* ══════════════════════════════════════════════════════
+   VERSION & HISTORY
+   To release an update: bump APP_VERSION and add an entry at the
+   TOP of VERSION_HISTORY. Every version label on the page, the
+   build marker and the What's New window are filled from these.
+══════════════════════════════════════════════════════ */
+const APP_VERSION = '3.3';
+const VERSION_HISTORY = [
+  { v: '3.3', date: '2026-11-27', title: 'Version history', changes: [
+    'New <strong>🆕 What\'s New</strong> window: tap the version badge or the What\'s New button to see every update.',
+    'After an update, a red dot on the version badge and a one-time message tell you a new version is running.'
+  ]},
+  { v: '3.2.1', date: '2026-11-27', title: 'Pop-up fixes inside Manager', changes: [
+    '<strong>+ New Supplier</strong> in Receive Stock now opens its own pop-up (Manager blocked the old browser prompt).',
+    'Pop-ups always open on top, so <strong>+ New Item</strong> from Receive Stock is usable; Escape closes only the top one.',
+    'Clear, Recall, Delete held sale and the zero-cost warning use an in-app Cancel / OK pop-up.'
+  ]},
+  { v: '3.2', date: '2026-11-27', title: 'Receive Stock', changes: [
+    '<strong>📦 Receive Stock</strong>: pick a supplier, scan items, enter quantity and unit cost (pre-filled from the last purchase price).',
+    'Saves a <strong>Purchase Invoice</strong> in Manager; choose <strong>On Credit</strong> or <strong>Paid Now</strong> (adds a supplier payment).',
+    'Unknown barcodes can be created on the spot.'
+  ]},
+  { v: '3.1', date: '2026-11-27', title: 'Quick Pay & printing', changes: [
+    '<strong>Quick Pay</strong>: amount tendered is pre-filled, exact payment is one tap on <strong>✓ Pay &amp; Print</strong> (or Enter).',
+    'Quick-cash buttons and a large change display; less than due posts a part payment.',
+    'Receipt printing no longer opens a pop-up window.'
+  ]},
+  { v: '3.0', date: '2026-11-26', title: 'Touchscreen edition', changes: [
+    '<strong>👆 Touch Mode</strong>: bigger buttons, tiles and text, and an on-screen number pad for number fields.',
+    '<strong>− / +</strong> quantity buttons, a filter for Quick Add tiles, and <strong>⛶ Full Screen</strong>.',
+    '<strong>⏸ Hold Sale</strong> / <strong>▶ Recall</strong> to park a cart and serve the next customer.',
+    'The previous version is kept at <code>/v2.5/</code>.'
+  ]},
+  { v: '2.8', date: '2026-11-26', title: 'Quick Add Customer', changes: [
+    'Quick Add Customer pop-up (like Quick Add Item), with a <strong>mobile number</strong> field.'
+  ]},
+  { v: '2.7', date: '2026-11-26', title: 'Discounts', changes: [
+    'Line and bill discounts, as an amount or a percentage.',
+    'A <strong>%</strong> checkbox everywhere to switch between amount and percent.'
+  ]},
+  { v: '2.6', date: '2026-11-26', title: 'Open in New Tab', changes: [
+    '<strong>↗ Open in New Tab</strong> runs the POS in its own browser tab instead of inside Manager\'s frame.',
+    'Removed the original author\'s promo and WhatsApp help link.'
+  ]},
+  { v: '2.5', date: '2026-09-14', title: 'Original release', changes: [
+    'The original open-source POS for Manager.io this fork is based on: sales, receipts, register, history, analysis, returns and the in-app User Guide.'
+  ]}
+];
+const VERSION_SEEN_KEY = 'pos.lastSeenVersion';
+
+function renderVersionHistory() {
+  const body = document.getElementById('version-body');
+  if (!body) return;
+  body.innerHTML = VERSION_HISTORY.map(e => `
+    <div class="ver-entry${e.v === APP_VERSION ? ' current' : ''}">
+      <div class="ver-head">
+        <span class="ver-num">v${escapeHtml(e.v)}</span>
+        <span class="ver-title">${escapeHtml(e.title)}</span>
+        ${e.v === APP_VERSION ? '<span class="ver-tag">You are here</span>' : ''}
+        <span class="ver-date">${escapeHtml(e.date)}</span>
+      </div>
+      <ul>${e.changes.map(c => `<li>${c}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+function openVersionModal() {
+  renderVersionHistory();
+  document.getElementById('version-modal').classList.add('open');
+  try { localStorage.setItem(VERSION_SEEN_KEY, APP_VERSION); } catch {}
+  const dot = document.getElementById('ver-new-dot');
+  if (dot) dot.hidden = true;
+}
+function closeVersionModal() {
+  document.getElementById('version-modal').classList.remove('open');
+}
+function initVersionLabels() {
+  document.querySelectorAll('.app-ver-label').forEach(el => { el.textContent = 'v' + APP_VERSION; });
+  let seen = null;
+  try { seen = localStorage.getItem(VERSION_SEEN_KEY); } catch {}
+  if (seen === APP_VERSION) return;
+  let toasted = null;
+  try { toasted = localStorage.getItem(VERSION_SEEN_KEY + '.toast'); } catch {}
+  if (toasted === APP_VERSION) { const d = document.getElementById('ver-new-dot'); if (d) d.hidden = false; return; }
+  const dot = document.getElementById('ver-new-dot');
+  if (dot) dot.hidden = false;
+  // New version on this device: red dot stays until What's New is opened; the message shows once.
+  setTimeout(() => toast('🆕 Now running v' + APP_VERSION + ' — tap the version badge to see what changed', 'success'), 1200);
+  try { localStorage.setItem(VERSION_SEEN_KEY + '.toast', APP_VERSION); } catch {}
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initVersionLabels);
+else initVersionLabels();
+
+/* ══════════════════════════════════════════════════════
    BUILD MARKER — the very first thing this script does.
    If you open the Debug panel and this line is NOT the first
    thing you see (or it shows an older version/date), your browser
    is running a cached or outdated copy of this file — hard refresh
    (Ctrl+Shift+R / Cmd+Shift+R) or redeploy, this is not a code bug.
 ══════════════════════════════════════════════════════ */
-debugLog('info', '🔧 POS build v3.0 — if you do not see this exact line first, you are running an old cached file.');
+debugLog('info', '🔧 POS build v' + APP_VERSION + ' — if you do not see this exact line first, you are running an old cached file.');
 
 /* ══════════════════════════════════════════════════════
    NEW-TAB (POP-OUT) MODE
