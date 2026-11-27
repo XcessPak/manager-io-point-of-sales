@@ -1117,6 +1117,35 @@ tr.over-row td{background:rgba(239,68,68,.04) !important}
   padding:12px;margin-bottom:14px;overflow:auto;
   max-height:50vh;
 }
+.receipt-modal-content{max-width:520px}
+.receipt-modal-content.with-pay{max-width:940px;width:calc(100vw - 32px)}
+.receipt-layout.with-pay{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.receipt-layout.with-pay .receipt-preview{max-height:62vh}
+@media(max-width:760px){.receipt-layout.with-pay{grid-template-columns:1fr}}
+.quick-pay{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:10px}
+.qp-due{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.qp-due span{font:700 11px/1 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.08em;color:var(--text-mute)}
+.qp-due b{font:800 32px/1 'IBM Plex Sans';color:var(--text);font-variant-numeric:tabular-nums}
+.qp-label{font:700 10px/1 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.08em;color:var(--text-mute)}
+.qp-methods{display:flex;flex-wrap:wrap;gap:6px}
+.qp-method{flex:1 1 30%;min-height:52px;padding:8px 10px;border-radius:var(--radius);border:2px solid var(--border);background:var(--panel);color:var(--text);font:700 13px/1.2 'IBM Plex Sans';cursor:pointer;-webkit-tap-highlight-color:transparent}
+.qp-method.active{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.qp-input{width:100%;min-height:58px;background:var(--input-bg);border:2px solid var(--input-border);border-radius:var(--radius);padding:8px 14px;color:var(--text);font:700 26px/1 'IBM Plex Mono',monospace;text-align:right}
+.qp-input:focus{outline:none;border-color:var(--accent)}
+.qp-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.qp-quick button{min-height:48px;border-radius:var(--radius);border:1px solid var(--border);background:var(--panel);color:var(--text);font:700 14px/1 'IBM Plex Mono',monospace;cursor:pointer}
+.qp-quick button:active{background:var(--accent-soft);border-color:var(--accent)}
+.qp-change{display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;border-radius:var(--radius);background:var(--success-soft,rgba(16,185,129,.12))}
+.qp-change span{font:700 12px/1 'IBM Plex Sans';text-transform:uppercase;letter-spacing:.06em;color:var(--text-mute)}
+.qp-change b{font:800 28px/1 'IBM Plex Sans';color:var(--success);font-variant-numeric:tabular-nums}
+.qp-change.partial{background:rgba(245,158,11,.12)}
+.qp-change.partial b{color:#d97706;font-size:20px}
+.qp-pay{min-height:66px!important;font-size:17px!important;width:100%}
+.qp-secondary{display:flex;gap:6px}
+.qp-secondary .btn{flex:1;min-height:44px;font-size:11px}
+.qp-done{text-align:center;padding:10px 4px}
+.qp-done .big{font:800 22px/1.2 'IBM Plex Sans';color:var(--success)}
+.qp-done .chg{font:800 40px/1.1 'IBM Plex Sans';color:var(--text);margin:6px 0 4px}
 .modal-actions{display:flex;gap:8px;flex-wrap:wrap}
 .modal-actions .btn{flex:1;min-width:100px}
 
@@ -1453,19 +1482,24 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
 
 <!-- Receipt Print Modal -->
 <div class="modal-overlay" id="receipt-modal" data-close="closeReceiptModal">
-  <div class="modal-content" style="max-width:520px">
+  <div class="modal-content receipt-modal-content" id="receipt-modal-content">
     <div class="modal-header">
-      <span class="modal-title">🧾 Receipt Preview</span>
+      <span class="modal-title">🧾 Sale Complete</span>
       <button class="modal-close" onclick="closeReceiptModal()">×</button>
     </div>
-    <div id="receipt-preview-area" class="receipt-preview"></div>
-    <div id="record-payment-note" style="font:500 10.5px/1.5 'IBM Plex Sans';color:var(--text-mute);margin:8px 2px 0;display:none"></div>
-    <div id="checkout-payment-panel" style="display:none;margin:10px 0"></div>
+    <div class="receipt-layout" id="receipt-layout">
+      <div id="quick-pay-panel" class="quick-pay" style="display:none"></div>
+      <div class="receipt-col">
+        <div id="receipt-preview-area" class="receipt-preview"></div>
+        <div id="record-payment-note" style="font:500 10.5px/1.5 'IBM Plex Sans';color:var(--text-mute);margin:8px 2px 0;display:none"></div>
+        <div id="checkout-payment-panel" style="display:none;margin:10px 0"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-print" onclick="printReceipt()">🖨 Print</button>
       <button class="btn btn-secondary" onclick="downloadReceiptPDF()" title="Downloads this receipt as a real PDF file">📄 Save as PDF</button>
       <button class="btn btn-secondary" id="apply-credit-btn" onclick="openApplyCreditToSaleModal()">💳 Apply Credit</button>
-      <button class="btn btn-secondary" id="record-payment-btn" onclick="toggleCheckoutPaymentPanel()">💰 Record Payment</button>
+      <button class="btn btn-secondary" id="record-payment-btn" onclick="toggleCheckoutPaymentPanel()" title="Split the payment over several accounts, or change the receipt date">💰 Split / Advanced</button>
       <button class="btn btn-secondary" onclick="closeReceiptModal()">Close</button>
     </div>
   </div>
@@ -1519,7 +1553,8 @@ body.touch .btn-xs{min-height:40px;padding:8px 12px;font-size:11px}
         <li><strong>🔍 Filter quick items</strong> above the Quick Add tiles narrows them by name or code.</li>
         <li><strong>⏸ Hold Sale</strong> parks the current cart (customer, discounts and walk-in details) so you can serve the next customer; <strong>▶ Recall</strong> brings it back. Held sales stay in this browser only and are not posted to Manager until completed.</li>
         <li><strong>⛶ Full Screen</strong> for a dedicated till screen. Inside Manager, full screen may be blocked — use <strong>↗ Open in New Tab</strong> first.</li>
-        <li>Shortcuts: F2 search · F4 complete sale · F7 new customer · F8 print · F9 new item.</li>
+        <li><strong>Quick Pay:</strong> after <strong>Complete Sale</strong> the Sale Complete window shows the amount due with the checkout payment method selected and <strong>Amount Tendered already filled in</strong>. Exact payment = one tap on <strong>✓ Pay &amp; Print</strong> (or press Enter). If the customer hands over more, tap a quick-cash button (e.g. 500 / 1,000) or the Tendered box and the change is shown in large digits. Less than due posts a part payment. Card/bank methods have no change. <strong>💰 Split / Advanced</strong> still splits a payment across accounts or changes the receipt date.</li>
+        <li>Shortcuts: F2 search · F4 complete sale · Enter pay &amp; print · F7 new customer · F8 print · F9 new item.</li>
       </ul>
 
       <h3>1. First-time setup</h3>
@@ -4231,7 +4266,7 @@ function updateRecordPaymentButton() {
     }
   } else if (!sale.invoiceKey) {
     btn.disabled = true;
-    btn.textContent = '💰 Record Payment';
+    btn.textContent = '💰 Split / Advanced';
     if (note) { note.style.display = 'none'; }
   } else if (sale.appliedCredit > 0 && remaining <= 0.005) {
     // Fully covered by applied credit — no bank/cash receipt needed at all.
@@ -4242,12 +4277,13 @@ function updateRecordPaymentButton() {
     if (note) { note.style.display = 'block'; note.textContent = `${fmt(sale.appliedCredit)} of credit fully covers this invoice.`; }
   } else {
     btn.disabled = false;
-    btn.textContent = sale.appliedCredit > 0 ? `💰 Record Payment (${fmt(remaining)} remaining)` : '💰 Record Payment';
+    btn.textContent = sale.appliedCredit > 0 ? `💰 Split / Advanced (${fmt(remaining)} due)` : '💰 Split / Advanced';
     if (note) {
       note.style.display = sale.appliedCredit > 0 ? 'block' : 'none';
       if (sale.appliedCredit > 0) note.textContent = `${fmt(sale.appliedCredit)} applied from credit — ${fmt(remaining)} still due.`;
     }
   }
+  if (!sale.qpBusy) showQuickPay();
 }
 
 // Creates a Manager Receipt against the invoice, marking it paid in the
@@ -4561,11 +4597,17 @@ async function submitCheckoutPayments() {
   const receiptDate = document.getElementById('checkout-payment-date')?.value || sale.issueDate || todayISO();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(receiptDate)) { resultEl.textContent = 'Enter a valid receipt date.'; return; }
 
+  await postSalePayments(sale, rows, receiptDate, resultEl, remaining);
+}
+
+// Shared by the Split/Advanced panel and Quick Pay: posts one Manager
+// Receipt per row against the sale's invoice. Returns { posted, failed }.
+async function postSalePayments(sale, rows, receiptDate, resultEl, remaining) {
   resultEl.textContent = 'Posting…';
   const arAccount = await resolveARAccountForCustomer(sale.customerKey);
   if (!arAccount) {
     resultEl.textContent = 'Could not resolve the Accounts Receivable account — nothing was posted. Record this receipt manually in Manager.';
-    return;
+    return { posted: 0, failed: rows.length };
   }
 
   let posted = 0, failed = 0, postedTotal = 0, cashTendered = 0, changeGiven = 0;
@@ -4622,6 +4664,150 @@ async function submitCheckoutPayments() {
     if (postedTotal + 0.01 >= remaining) sale.paymentReceiptKey = sale.paymentReceiptKey || 'covered'; // fully paid
   }
   updateRecordPaymentButton();
+  return { posted, failed, postedTotal, changeGiven };
+}
+
+/* ══════════════════════════════════════════════════════
+   QUICK PAY — one-tap payment right after Complete Sale.
+   Shown automatically in the Sale Complete window: the payment method
+   chosen at checkout is preselected, Tendered is pre-filled with the
+   amount due (exact payment = one tap on Pay & Print). If the customer
+   hands over more, tap a quick-cash button or the Tendered box (number
+   pad in Touch Mode) and the change is worked out. Less than due posts a
+   part payment. Split payments / receipt date: "Split / Advanced".
+══════════════════════════════════════════════════════ */
+function qpDue(sale) {
+  return round2(Math.max(0, (Number(sale?.total) || 0) - (Number(sale?.appliedCredit) || 0) - (Number(sale?.payment?.applied) || 0)));
+}
+function qpIsCash(key) {
+  if (hasCashDrawerAccounts()) return isCashAccountKey(key);
+  const a = (state.paymentAccounts || []).find(x => x.key === key);
+  return /cash/i.test(a?.item?.name || '');
+}
+// Next "round" amounts a customer is likely to hand over, above the due.
+function qpQuickAmounts(due) {
+  const steps = [10, 50, 100, 500, 1000, 5000];
+  const out = [];
+  for (const st of steps) {
+    const v = Math.ceil((due + 0.001) / st) * st;
+    if (v > due + 0.004 && !out.includes(v)) out.push(v);
+  }
+  return out.slice(0, 3);
+}
+function showQuickPay() {
+  const panel = document.getElementById('quick-pay-panel');
+  const sale = state.lastSubmittedSale;
+  const layout = document.getElementById('receipt-layout');
+  const content = document.getElementById('receipt-modal-content');
+  const due = qpDue(sale);
+  const canPay = sale && sale.invoiceKey && !sale.paymentReceiptKey && due > 0.004 && (state.paymentAccounts || []).length;
+  const showPanel = !!(sale && (canPay || sale.quickPayDone));
+  panel.style.display = showPanel ? '' : 'none';
+  layout.classList.toggle('with-pay', showPanel);
+  content.classList.toggle('with-pay', showPanel);
+  if (!showPanel) return;
+  if (sale.quickPayDone) { renderQuickPayDone(sale); return; }
+  if (!sale.qpAccount) sale.qpAccount = sale.paymentAccountKey || state.paymentAccounts[0]?.key;
+  const methods = state.paymentAccounts.map(a =>
+    `<button type="button" class="qp-method ${a.key === sale.qpAccount ? 'active' : ''}" onclick="qpSelectMethod('${a.key}')">${escapeHtml(a.item?.name || 'Account')}</button>`).join('');
+  panel.innerHTML = `
+    <div class="qp-due"><span>Amount Due</span><b>${fmt(due)}</b></div>
+    <div class="qp-label">Payment Method</div>
+    <div class="qp-methods">${methods}</div>
+    <div class="qp-label" id="qp-tendered-label">Amount Tendered</div>
+    <input type="number" id="qp-tendered" class="qp-input" min="0" step="any" inputmode="decimal" value="${due.toFixed(2)}" oninput="qpUpdate()" />
+    <div class="qp-quick" id="qp-quick"></div>
+    <div class="qp-change" id="qp-change"><span>Change</span><b>0.00</b></div>
+    <button class="btn btn-primary qp-pay" id="qp-pay-btn" onclick="submitQuickPay(true)">✓ Pay &amp; Print</button>
+    <div class="qp-secondary">
+      <button class="btn btn-secondary" onclick="submitQuickPay(false)">Pay, no print</button>
+      <button class="btn btn-secondary" onclick="closeReceiptModal()">Pay later</button>
+    </div>
+    <div id="qp-result" style="font:500 11px 'IBM Plex Sans';color:var(--text-mute)"></div>`;
+  qpRenderQuick();
+  qpUpdate();
+}
+function qpSelectMethod(key) {
+  const sale = state.lastSubmittedSale; if (!sale) return;
+  sale.qpAccount = key;
+  document.querySelectorAll('#quick-pay-panel .qp-method').forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(`'${key}'`)));
+  // Card / bank: there's no change, so reset Tendered to the exact due.
+  if (!qpIsCash(key)) { const t = document.getElementById('qp-tendered'); if (t) t.value = qpDue(sale).toFixed(2); }
+  qpRenderQuick();
+  qpUpdate();
+}
+function qpRenderQuick() {
+  const sale = state.lastSubmittedSale;
+  const box = document.getElementById('qp-quick');
+  const label = document.getElementById('qp-tendered-label');
+  if (!box || !sale) return;
+  const cash = qpIsCash(sale.qpAccount);
+  if (label) label.textContent = cash ? 'Amount Tendered (cash received)' : 'Amount';
+  const due = qpDue(sale);
+  box.style.display = cash ? '' : 'none';
+  box.innerHTML = [`<button type="button" onclick="qpSetTendered(${due})">Exact</button>`]
+    .concat(qpQuickAmounts(due).map(v => `<button type="button" onclick="qpSetTendered(${v})">${fmt(v).replace(/\.00$/, '')}</button>`)).join('');
+}
+function qpSetTendered(v) {
+  const t = document.getElementById('qp-tendered'); if (!t) return;
+  t.value = Number(v).toFixed(2);
+  qpUpdate();
+}
+function qpUpdate() {
+  const sale = state.lastSubmittedSale; if (!sale) return;
+  const due = qpDue(sale);
+  const tendered = Number(document.getElementById('qp-tendered')?.value) || 0;
+  const box = document.getElementById('qp-change');
+  const btn = document.getElementById('qp-pay-btn');
+  if (!box) return;
+  if (tendered + 0.004 < due) {
+    box.className = 'qp-change partial';
+    box.innerHTML = tendered > 0 ? `<span>Part payment</span><b>${fmt(due - tendered)} left due</b>` : `<span>Enter amount</span><b>—</b>`;
+  } else {
+    box.className = 'qp-change';
+    box.innerHTML = `<span>Change</span><b>${fmt(qpIsCash(sale.qpAccount) ? tendered - due : 0)}</b>`;
+  }
+  if (btn) btn.disabled = tendered <= 0;
+}
+async function submitQuickPay(printAfter) {
+  const sale = state.lastSubmittedSale;
+  const resultEl = document.getElementById('qp-result');
+  if (!sale || !resultEl || sale.qpBusy) return;
+  const due = qpDue(sale);
+  let tendered = Number(document.getElementById('qp-tendered')?.value) || 0;
+  if (tendered <= 0) { resultEl.textContent = 'Enter the amount received.'; return; }
+  const cash = qpIsCash(sale.qpAccount);
+  if (!cash && tendered > due) tendered = due;            // card/bank can't give change
+  const amount = round2(Math.min(tendered, due));
+  const receiptDate = sale.issueDate || todayISO();
+  sale.qpBusy = true;
+  document.querySelectorAll('#quick-pay-panel button').forEach(b => b.disabled = true);
+  try {
+    const rows = [{ account: sale.qpAccount, amount, tendered: cash ? tendered : 0, isCash: cash }];
+    const r = await postSalePayments(sale, rows, receiptDate, resultEl, due);
+    if (r.posted) {
+      sale.quickPayDone = { amount, change: cash ? round2(tendered - amount) : 0, left: round2(due - amount),
+                            accountName: (state.paymentAccounts.find(a => a.key === sale.qpAccount)?.item?.name) || '' };
+      showQuickPay();
+      if (printAfter) setTimeout(printReceipt, 150);   // receipt now shows Tendered / Change
+    } else {
+      document.querySelectorAll('#quick-pay-panel button').forEach(b => b.disabled = false);
+    }
+  } finally {
+    sale.qpBusy = false;
+  }
+}
+function renderQuickPayDone(sale) {
+  const d = sale.quickPayDone;
+  const panel = document.getElementById('quick-pay-panel');
+  panel.innerHTML = `
+    <div class="qp-done">
+      <div class="big">✓ Paid ${fmt(d.amount)}${d.accountName ? ' · ' + escapeHtml(d.accountName) : ''}</div>
+      ${d.change > 0.004 ? `<div class="qp-label" style="margin-top:12px">Give change</div><div class="chg">${fmt(d.change)}</div>` : ''}
+      ${d.left > 0.004 ? `<div style="margin-top:8px;color:#d97706;font:700 14px 'IBM Plex Sans'">${fmt(d.left)} still due — collect later from the Register</div>` : ''}
+    </div>
+    <button class="btn btn-print qp-pay" onclick="printReceipt()">🖨 Print Again</button>
+    <button class="btn btn-primary qp-pay" onclick="closeReceiptModal()">➜ New Sale</button>`;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4841,7 +5027,42 @@ function buildThermalReceiptHTML(sale) {
   `;
 }
 
+// Prints through a hidden iframe (no pop-up window, so it can't be
+// blocked even when printing right after a payment is saved). The page is
+// one 80mm-wide page with extra blank feed at the end, so a printer whose
+// driver is set to "cut at end of page/document" cuts below the text.
+function receiptPrintHTML(receiptHTML, autoClose) {
+  return `<!doctype html><html><head><meta charset="utf-8">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      @page{size:80mm auto;margin:0}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{background:#fff;margin:0;padding:0;font-family:'Roboto Mono',monospace}
+      @media print{html,body{width:80mm;background:#fff}}
+    </style>
+  </head><body>${receiptHTML}<div style="height:12mm"></div></body></html>`;
+}
 function printReceipt() {
+  const receipt = document.getElementById('thermal-receipt');
+  if (!receipt) return;
+  try {
+    document.getElementById('receipt-print-frame')?.remove();
+    const fr = document.createElement('iframe');
+    fr.id = 'receipt-print-frame';
+    fr.setAttribute('aria-hidden', 'true');
+    fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(fr);
+    const doc = fr.contentDocument;
+    doc.open(); doc.write(receiptPrintHTML(receipt.outerHTML)); doc.close();
+    const go = () => { try { fr.contentWindow.focus(); fr.contentWindow.print(); } catch (e) { printReceiptPopup(); } };
+    const fonts = fr.contentDocument.fonts;
+    Promise.race([fonts ? fonts.ready : Promise.resolve(), new Promise(r => setTimeout(r, 1200))]).then(() => setTimeout(go, 100));
+  } catch (e) {
+    debugLog('fail', 'Inline print failed, using pop-up: ' + e.message);
+    printReceiptPopup();
+  }
+}
+function printReceiptPopup() {
   const receipt = document.getElementById('thermal-receipt');
   if (!receipt) return;
   const printWin = window.open('', '_blank', 'width=320,height=600');
@@ -4854,7 +5075,7 @@ function printReceipt() {
       body{background:#fff;margin:0;padding:0;font-family:'Roboto Mono',monospace}
       @media print{html,body{width:80mm;background:#fff}}
     </style>
-  </head><body>${receipt.outerHTML}
+  </head><body>${receipt.outerHTML}<div style="height:12mm"></div>
   <script>
     setTimeout(function(){window.focus();window.print();},400);
     window.onafterprint=function(){setTimeout(function(){window.close()},200)};
@@ -5329,6 +5550,16 @@ async function verifyCustomerMobileSaved(key, fieldKey, mobile) {
     debugLog('fail', 'Could not verify mobile number: ' + e.message);
   }
 }
+
+// Enter in the Sale Complete window = Pay & Print (or New Sale once paid)
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || !document.getElementById('receipt-modal')?.classList.contains('open')) return;
+  if (e.target.closest?.('button, select, textarea') ) return;
+  const sale = state.lastSubmittedSale;
+  if (!sale || document.getElementById('quick-pay-panel')?.style.display === 'none') return;
+  e.preventDefault();
+  if (sale.quickPayDone) closeReceiptModal(); else submitQuickPay(true);
+});
 
 // Enter in the customer form = Save & Select
 document.addEventListener('keydown', (e) => {

@@ -24,6 +24,8 @@ This README is written to match exactly what the current `index.html` does — e
 - **Qty − / + buttons** on every cart line
 - **Quick Add filter** — a search box above the Quick Add tiles
 - **Hold / Recall sales** — park the current cart (customer, discounts, walk-in details) and bring it back later; kept in the browser only until completed
+- **Quick Pay** — after Complete Sale, the Sale Complete window opens with the payment method preselected and Amount Tendered pre-filled with the amount due, so an exact payment is one tap on **✓ Pay & Print** (or Enter). Quick-cash buttons (Exact and the next round amounts, e.g. 500 / 1,000) and the number pad handle larger notes, with the change shown in large digits; less than due posts a part payment; card/bank methods never give change. **Split / Advanced** keeps the multi-line payment form
+- **Receipt printing without pop-ups** — receipts print through a hidden frame (never blocked) with extra paper feed at the end so the printer's auto-cutter cuts below the text. Whether the printer cuts is set in its Windows driver (see *Known Limitations*)
 - **Full Screen** button for a dedicated till screen (use *Open in New Tab* first if Manager blocks it)
 - **Customer selection** — search and pick a customer, or fall back to an auto-detected default POS/walk-in customer (code `999` or named "POS")
 - **Quick Add Customer** — a **+ New Customer** button beside the Customer field (shortcut **F7**), and an *Add new customer* option at the bottom of the customer search, open a popup to create a customer in Manager (name required; code and **Mobile Number** optional) and select it for the current sale. The mobile number is saved to a Manager **text custom field for Customers** whose name contains "Mobile" (e.g. *Mobile Number*), found automatically — or to the billing address if no such field exists — and customers can then be searched by mobile number in the POS. It warns about a duplicate name, code or mobile number and offers to use the existing customer instead
@@ -143,6 +145,7 @@ These are the specific places where the extension makes a judgment call or a fal
 
 ## ⚠️ Known Limitations
 
+- **Paper cut:** a web page can't send the printer's cut command directly; browsers print through the printer driver. Turn on the cutter in the driver (Windows: Printers & scanners → your receipt printer → Printing preferences → *Paper cut / Cut at end of document*). For one-click printing with no print dialog, start Chrome with `--kiosk-printing`
 - Tax rates (e.g. VAT, WHT) are not yet applied to POS sales
 - Displayed available stock quantity may not always match Manager's own item balance for complex scenarios
 - No dedicated barcode field/setup guidance yet for physical barcode scanners (the barcode input works but some scanners may need configuration)
